@@ -70,13 +70,17 @@ def setup_git_repo():
         if not run_command("git init", "Initializing Git repository"):
             return False
         
+        # Set branch to main
+        run_command("git branch -M main", "Setting branch to main")
+        
         # Add remote if specified
-        if GITHUB_REPO != "addamiano/mdici-dashboard":
-            remote_url = f"https://github.com/{GITHUB_REPO}.git"
-            if not run_command(f"git remote add origin {remote_url}", f"Adding remote {remote_url}"):
-                return False
+        remote_url = f"https://github.com/{GITHUB_REPO}.git"
+        if not run_command(f"git remote add origin {remote_url}", f"Adding remote {remote_url}"):
+            return False
     else:
         print("✅ Git repository already exists")
+        # Ensure we're on main branch
+        run_command("git branch -M main", "Ensuring main branch")
     
     # Configure git if needed
     run_command('git config user.name "MDICI Auto-Deploy"', "Setting Git username")
@@ -167,13 +171,14 @@ def commit_and_push():
     # Since GITHUB_REPO is set to "addamiano/mdici-dashboard", we'll push
     print(f"📤 Pushing to GitHub repository: {GITHUB_REPO}")
     
-    # Try to push to main branch
-    if not run_command("git push origin main", "Pushing to GitHub (main branch)"):
-        # Try master branch if main doesn't exist
-        if not run_command("git push origin master", "Pushing to GitHub (master branch)"):
-            print("❌ Failed to push to GitHub - you may need to configure authentication")
-            print("   Set up a Personal Access Token or SSH key for authentication")
-            return False
+    # Push to main branch
+    if not run_command("git push -u origin main", "Pushing to GitHub (main branch)"):
+        print("❌ Failed to push to GitHub - you may need to configure authentication")
+        print("   Set up a Personal Access Token or SSH key for authentication")
+        print("\n   To fix authentication:")
+        print("   1. Create a Personal Access Token at https://github.com/settings/tokens")
+        print("   2. Run: git remote set-url origin https://USERNAME:TOKEN@github.com/addamiano/mdici-dashboard.git")
+        return False
     
     return True
 
