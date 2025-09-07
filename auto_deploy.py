@@ -90,12 +90,11 @@ def prepare_files_for_deployment():
     print("STEP 3: PREPARING FILES FOR DEPLOYMENT")
     print("=" * 60)
     
-    # Copy the complete cloud version as streamlit_app.py
-    if os.path.exists("streamlit_app_complete.py"):
-        shutil.copy2("streamlit_app_complete.py", "streamlit_app.py")
-        print("✅ Copied streamlit_app_complete.py → streamlit_app.py")
+    # Check that streamlit_app.py exists
+    if os.path.exists("streamlit_app.py"):
+        print("✅ streamlit_app.py found")
     else:
-        print("❌ streamlit_app_complete.py not found")
+        print("❌ streamlit_app.py not found")
         return False
     
     # Copy CSV files to root directory for easier Streamlit Cloud access
@@ -164,17 +163,17 @@ def commit_and_push():
         print("ℹ️ No changes to commit (files may be unchanged)")
         return True  # This is OK - no changes needed
     
-    # Push to remote (if configured)
-    if GITHUB_REPO == "addamiano/mdici-dashboard":
-        print("ℹ️ GitHub repository not configured - skipping push")
-        print("   Update GITHUB_REPO variable in this script to enable auto-push")
-    else:
-        # Try to push to main branch
-        if not run_command("git push origin main", "Pushing to GitHub (main branch)"):
-            # Try master branch if main doesn't exist
-            if not run_command("git push origin master", "Pushing to GitHub (master branch)"):
-                print("❌ Failed to push to GitHub - you may need to configure authentication")
-                return False
+    # Push to remote 
+    # Since GITHUB_REPO is set to "addamiano/mdici-dashboard", we'll push
+    print(f"📤 Pushing to GitHub repository: {GITHUB_REPO}")
+    
+    # Try to push to main branch
+    if not run_command("git push origin main", "Pushing to GitHub (main branch)"):
+        # Try master branch if main doesn't exist
+        if not run_command("git push origin master", "Pushing to GitHub (master branch)"):
+            print("❌ Failed to push to GitHub - you may need to configure authentication")
+            print("   Set up a Personal Access Token or SSH key for authentication")
+            return False
     
     return True
 
@@ -206,11 +205,8 @@ def verify_deployment():
     print("   2. Verify the app updates within 2-3 minutes")
     print("   3. Test the dashboard functionality")
     
-    if GITHUB_REPO != "addamiano/mdici-dashboard":
-        print(f"   4. Check GitHub repository: https://github.com/{GITHUB_REPO}")
-        print(f"   5. Streamlit Cloud URL: https://your-app.streamlit.app")
-    else:
-        print("   4. Configure GITHUB_REPO in this script for full automation")
+    print(f"   4. Check GitHub repository: https://github.com/{GITHUB_REPO}")
+    print(f"   5. Streamlit Cloud URL: https://share.streamlit.io/addamiano/mdici-dashboard/main/streamlit_app.py")
     
     return True
 
