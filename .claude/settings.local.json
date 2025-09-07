@@ -4,6 +4,7 @@
       "Bash(git init:*)",
       "Bash(git remote add:*)",
       "Bash(cp:*)",
+<<<<<<< HEAD
       "Bash(python:*)",
       "Bash(git pull:*)",
       "Bash(git config:*)",
@@ -11,6 +12,9 @@
       "Bash(git branch:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)"
+=======
+      "Bash(python:*)"
+>>>>>>> 6585b5e5b5bd2ec6938179fead84924568b060c4
     ],
     "deny": [],
     "ask": []
