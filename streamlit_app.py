@@ -1,7 +1,6 @@
 """
-MDICI Dashboard - Cloud Version
-Uses CSV files instead of direct database connection
-Deploy this version to Streamlit Cloud
+MDICI Dashboard - Complete Cloud Version
+Full functionality from streamlit_simple.py but reads from CSV files
 """
 
 import streamlit as st
@@ -10,7 +9,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, date, timedelta
 from io import BytesIO
-import socket
 
 # Page configuration
 st.set_page_config(
@@ -30,14 +28,12 @@ def load_project_data():
         possible_files = [
             'mdici_projects_latest.csv',  # Local file
             'exported_data/mdici_projects_latest.csv',  # Local subfolder
-            'https://your-storage-url/mdici_projects_latest.csv'  # Cloud storage (update this URL)
         ]
         
         df = None
         for file_path in possible_files:
             try:
                 df = pd.read_csv(file_path)
-                st.success(f"✅ Data loaded from: {file_path}")
                 break
             except:
                 continue
@@ -66,7 +62,6 @@ def load_completed_performance():
         possible_files = [
             'mdici_performance_latest.csv',
             'exported_data/mdici_performance_latest.csv',
-            'https://your-storage-url/mdici_performance_latest.csv'  # Update this URL
         ]
         
         for file_path in possible_files:
@@ -161,6 +156,57 @@ def create_engineer_workload_chart(df):
     
     return fig
 
+def create_timeline_chart(df):
+    """Create timeline view of projects"""
+    if df.empty:
+        return None
+        
+    timeline_df = df[df['Kick-Off Date'].notna()].copy()
+    timeline_df = timeline_df.sort_values('Kick-Off Date', ascending=False).head(20)
+    
+    fig = go.Figure()
+    
+    # Add kickoff dates
+    fig.add_trace(go.Scatter(
+        x=timeline_df['Kick-Off Date'],
+        y=timeline_df['Defect ID'],
+        mode='markers',
+        name='Kick-off',
+        marker=dict(size=10, color='blue')
+    ))
+    
+    # Add expected completion dates
+    completion_df = timeline_df[timeline_df['Expected DE Completion'].notna()]
+    fig.add_trace(go.Scatter(
+        x=completion_df['Expected DE Completion'],
+        y=completion_df['Defect ID'],
+        mode='markers',
+        name='Expected Completion',
+        marker=dict(size=10, color='green', symbol='square')
+    ))
+    
+    # Connect with lines
+    for _, row in completion_df.iterrows():
+        if pd.notna(row['Expected DE Completion']):
+            fig.add_trace(go.Scatter(
+                x=[row['Kick-Off Date'], row['Expected DE Completion']],
+                y=[row['Defect ID'], row['Defect ID']],
+                mode='lines',
+                line=dict(color='lightgray', width=1),
+                showlegend=False,
+                hoverinfo='skip'
+            ))
+    
+    fig.update_layout(
+        title="Project Timeline (Recent 20 Projects)",
+        xaxis_title="Date",
+        yaxis_title="Project ID",
+        height=500,
+        showlegend=True
+    )
+    
+    return fig
+
 def export_to_excel(df):
     """Create Excel file with formatting"""
     if df.empty:
@@ -209,7 +255,7 @@ def main():
     
     if df.empty:
         st.error("No data available. Please check your CSV files.")
-        st.info("💡 Make sure you've uploaded the exported CSV files to your chosen storage location.")
+        st.info("💡 Make sure you've uploaded the exported CSV files to your storage location.")
         return
     
     # Show database summary with correct logic
@@ -224,19 +270,23 @@ def main():
     
     st.success(f"✅ Loaded {total_projects:,} total projects ({awaiting_kickoff} awaiting kickoff info)")
     
-    # Sidebar filters (same as original)
+    # Sidebar filters
     with st.sidebar:
         st.header("Filters")
         
-        # Project State filter
+        # Project State filter - now includes all states for historical view
         st.subheader("Project State")
         project_states = sorted(df['Project State'].unique())
+        
+        # Separate active vs completed for easier selection
+        active_states = [s for s in project_states if s in ['Design', 'Firewall', 'Testing', 'Intake', 'Hold']]
+        completed_states = [s for s in project_states if s in ['Complete', 'Security']]
         
         # Quick filter buttons
         col1, col2, col3 = st.columns(3)
         with col1:
             if st.button("🎯 Active Only", use_container_width=True):
-                st.session_state.selected_states = [s for s in project_states if s in ['Design', 'Firewall', 'Testing', 'Intake', 'Hold']]
+                st.session_state.selected_states = active_states
         with col2:
             if st.button("⏳ Awaiting Kickoff", use_container_width=True, help="Intake projects awaiting kickoff info"):
                 st.session_state.selected_states = ['Intake']
@@ -244,10 +294,11 @@ def main():
         with col3:
             if st.button("📋 All Projects", use_container_width=True):
                 st.session_state.selected_states = project_states
+                st.session_state.show_placeholders = False
         
         # Initialize session state if not exists
         if 'selected_states' not in st.session_state:
-            st.session_state.selected_states = ['Design', 'Firewall']
+            st.session_state.selected_states = ['Design', 'Firewall']  # Default to active Design/Firewall
         
         selected_states = st.multiselect(
             "Select Project States",
@@ -290,7 +341,7 @@ def main():
             help="Type a Defect ID to quickly find that project"
         )
     
-    # Apply filters (same logic as original)
+    # Apply filters
     filtered_df = df.copy()
     
     if selected_states:
@@ -310,9 +361,11 @@ def main():
     
     # Apply Defect ID search filter
     if defect_search:
+        # Convert to string and search (case insensitive)
         mask = filtered_df['Defect ID'].astype(str).str.contains(defect_search, case=False, na=False)
         filtered_df = filtered_df[mask]
         
+        # If exact match found, highlight it in the UI
         if len(filtered_df) == 1:
             st.success(f"✅ Found exact match: Defect ID {defect_search}")
         elif len(filtered_df) > 1:
@@ -320,7 +373,7 @@ def main():
         else:
             st.warning(f"❌ No projects found matching '{defect_search}'")
     
-    # Key Metrics (same as original)
+    # Key Metrics - Only for Design projects for SLA tracking
     design_projects = filtered_df[filtered_df['Project State'] == 'Design']
     
     col1, col2, col3, col4, col5 = st.columns(5)
@@ -338,10 +391,12 @@ def main():
         st.metric("Pending Site Updates", testing_count, help="Projects waiting for site feedback")
     
     with col4:
+        # Only count overdue for Design projects (SLA only applies to them)
         overdue_count = len(design_projects[design_projects['Status'] == 'Overdue'])
         st.metric("Overdue Design", overdue_count, help="Design projects past 21-day SLA")
     
     with col5:
+        # Only urgent Design projects matter for SLA
         urgent = len(design_projects[(design_projects['Days Until SLA'] <= 3) & 
                                    (design_projects['Days Until SLA'].notna())])
         st.metric("Urgent Design (<3 days)", urgent, help="Design projects near SLA deadline")
@@ -367,50 +422,250 @@ def main():
             st.metric("SLA Met Rate (≤21 days)", f"{sla_rate:.1f}%",
                      help="Percentage meeting 21-day SLA")
     
-    # Tabs for different views (rest same as original)
+    # Tabs for different views
     tab1, tab2, tab3 = st.tabs(["📊 Active Projects", "👥 By Engineer", "📝 Detailed View"])
     
     with tab1:
         st.subheader("📋 Project Overview")
         
-        # Same table implementation as original...
-        # [Rest of the tab content would be identical to streamlit_simple.py]
-        # For brevity, showing key differences only
+        # Define columns to display - now customizable
+        default_columns = [
+            'Defect ID',
+            'OPW',
+            'Design Engineer', 
+            'Project State',
+            'Kick-Off Date', 
+            'Expected DE Completion',
+            'Days Since Kickoff', 
+            'Testing Info Sent',
+            'Facility Updates'
+        ]
         
-        # Main project table with same functionality
-        if not filtered_df.empty:
-            st.dataframe(filtered_df, use_container_width=True)
-            
-            # Download options
+        # Optional columns users can add
+        optional_columns = [
+            'Days Until SLA', 'Priority', 'Service Line', 'OPW', 
+            'Service Area', 'Facility Updates', 'Comments', 'ASA Assigned', 
+            'Number of Devices', 'Actual Go-Live Date'
+        ]
+        
+        # Column selector
+        with st.expander("🔧 Customize Columns", expanded=False):
             col1, col2 = st.columns(2)
             with col1:
-                csv = filtered_df.to_csv(index=False)
-                st.download_button(
-                    label="📥 Download as CSV",
-                    data=csv,
-                    file_name=f"MDICI_Projects_{date.today()}.csv",
-                    mime="text/csv",
-                    use_container_width=True
-                )
+                st.write("**Default Columns** (always shown)")
+                for col in default_columns:
+                    if col in filtered_df.columns:
+                        st.write(f"✅ {col}")
+            
             with col2:
-                excel_data = export_to_excel(filtered_df)
-                st.download_button(
-                    label="📥 Download as Excel",
-                    data=excel_data,
-                    file_name=f"MDICI_Projects_{date.today()}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True
+                additional_cols = st.multiselect(
+                    "**Add Optional Columns**",
+                    [col for col in optional_columns if col in filtered_df.columns],
+                    help="Select additional columns to display"
                 )
+        
+        # Combine columns
+        display_columns = default_columns + additional_cols
+        display_columns = [col for col in display_columns if col in filtered_df.columns]
+        
+        # Sort options
+        col1, col2 = st.columns(2)
+        with col1:
+            sort_column = st.selectbox(
+                "Sort by:",
+                options=[col for col in display_columns if col in filtered_df.columns],
+                index=5 if 'Days Since Kickoff' in display_columns else 0
+            )
+        with col2:
+            sort_ascending = st.radio("Order:", ["Newest First", "Oldest First"], horizontal=True)
+        
+        # Sort the dataframe
+        sorted_df = filtered_df.sort_values(
+            sort_column, 
+            ascending=(sort_ascending == "Oldest First"),
+            na_position='last'
+        )
+        
+        # Display the main table with selection capability
+        selected_rows = st.dataframe(
+            sorted_df[display_columns],
+            use_container_width=True,
+            hide_index=True,
+            on_select="rerun",
+            selection_mode="single-row",
+            column_config={
+                "Kick-Off Date": st.column_config.DateColumn(
+                    "Kick-Off Date",
+                    format="YYYY-MM-DD"
+                ),
+                "Expected DE Completion": st.column_config.DateColumn(
+                    "Expected Completion", 
+                    format="YYYY-MM-DD"
+                ),
+                "Testing Info Sent": st.column_config.DateColumn(
+                    "Testing Info Sent",
+                    format="YYYY-MM-DD"
+                ),
+                "Actual Go-Live Date": st.column_config.DateColumn(
+                    "Go-Live Date",
+                    format="YYYY-MM-DD"
+                ),
+                "Days Since Kickoff": st.column_config.NumberColumn(
+                    "Days Since Kickoff",
+                    format="%d days"
+                ),
+                "Days Until SLA": st.column_config.NumberColumn(
+                    "Days Until SLA",
+                    format="%d days",
+                    help="Negative = Overdue"
+                ),
+                "Status": st.column_config.TextColumn(
+                    "Status",
+                    help="Click row below to see full details"
+                )
+            }
+        )
+        
+        # Show details of selected row
+        if selected_rows and len(selected_rows.selection.rows) > 0:
+            selected_index = selected_rows.selection.rows[0]
+            selected_project = sorted_df.iloc[selected_index]
+            
+            st.markdown("---")
+            st.markdown("### 📋 **Project Details**")
+            
+            # Create three columns for project details
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.markdown("**🔍 Basic Info**")
+                st.write(f"**Defect ID:** {selected_project['Defect ID']}")
+                st.write(f"**Design Engineer:** {selected_project['Design Engineer']}")
+                st.write(f"**Status:** {selected_project['Status']}")
+                st.write(f"**Priority:** {selected_project.get('Priority', 'N/A')}")
+                st.write(f"**Project State:** {selected_project['Project State']}")
+                st.write(f"**Service Area:** {selected_project.get('Service Area', 'N/A')}")
+                st.write(f"**Service Line:** {selected_project.get('Service Line', 'N/A')}")
+            
+            with col2:
+                st.markdown("**📅 Timeline**")
+                st.write(f"**Kick-Off Date:** {selected_project['Kick-Off Date']}")
+                st.write(f"**Expected DE Completion:** {selected_project.get('Expected DE Completion', 'N/A')}")
+                st.write(f"**Testing Info Sent:** {selected_project.get('Testing Info Sent', 'Not Sent')}")
+                st.write(f"**Go-Live Date:** {selected_project.get('Actual Go-Live Date', 'Not Complete')}")
+                st.write(f"**Days Since Kickoff:** {selected_project.get('Days Since Kickoff', 'N/A')}")
+                if selected_project.get('Days Until SLA'):
+                    sla_days = selected_project['Days Until SLA']
+                    sla_color = "🔴" if sla_days < 0 else "🟡" if sla_days <= 3 else "🟢"
+                    st.write(f"**Days Until SLA:** {sla_color} {sla_days}")
+            
+            with col3:
+                st.markdown("**🔧 Technical Details**")
+                st.write(f"**OPW:** {selected_project.get('OPW', 'N/A')}")
+                st.write(f"**Number of Devices:** {selected_project.get('Number of Devices', 'N/A')}")
+                st.write(f"**ASA Assigned:** {selected_project.get('ASA Assigned', 'N/A')}")
+            
+            # Show Facility Updates and Comments in full width
+            if pd.notna(selected_project.get('Facility Updates')):
+                st.markdown("**🏢 Facility Updates**")
+                st.markdown(f"```\n{selected_project['Facility Updates']}\n```")
+            
+            if pd.notna(selected_project.get('Comments')):
+                st.markdown("**💬 Comments History**")
+                st.markdown(f"```\n{selected_project['Comments']}\n```")
         else:
-            st.info("No projects match your current filters.")
+            st.info("👆 Click on any row in the table above to see detailed project information")
+        
+        # Download and summary section
+        st.markdown("---")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            csv = sorted_df[display_columns].to_csv(index=False)
+            st.download_button(
+                label="📥 Download as CSV",
+                data=csv,
+                file_name=f"MDICI_Projects_{date.today()}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+        
+        with col2:
+            st.metric("Total Projects", len(sorted_df))
     
-    # Add similar implementation for other tabs...
+    with tab2:
+        st.subheader("Projects by Design Engineer")
+        
+        # Group by engineer and status
+        engineer_summary = filtered_df.groupby(['Design Engineer', 'Status']).size().reset_index(name='Count')
+        engineer_pivot = engineer_summary.pivot(index='Design Engineer', columns='Status', values='Count').fillna(0)
+        
+        # Display summary table
+        st.dataframe(engineer_pivot, use_container_width=True)
+        
+        # Show workload for each engineer
+        st.subheader("Engineer Workload Details")
+        for engineer in filtered_df['Design Engineer'].dropna().unique():
+            eng_df = filtered_df[filtered_df['Design Engineer'] == engineer]
+            
+            with st.expander(f"{engineer} - {len(eng_df)} projects"):
+                # Show urgent projects first
+                urgent_eng = eng_df[eng_df['Status'].isin(['Overdue', 'Attention Needed'])]
+                if not urgent_eng.empty:
+                    st.warning(f"⚠️ {len(urgent_eng)} projects need attention")
+                
+                st.dataframe(
+                    eng_df[['Defect ID', 'Status', 'Days Until SLA', 'Priority', 'Service Area']],
+                    use_container_width=True,
+                    hide_index=True
+                )
+    
+    with tab3:
+        st.subheader("Detailed Project View with Comments")
+        
+        # Select a specific project to view details
+        project_ids = filtered_df['Defect ID'].unique()
+        selected_project_id = st.selectbox("Select Project", project_ids)
+        
+        if selected_project_id:
+            project = filtered_df[filtered_df['Defect ID'] == selected_project_id].iloc[0]
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("**Project Information**")
+                st.write(f"**Defect ID:** {project['Defect ID']}")
+                st.write(f"**Design Engineer:** {project['Design Engineer']}")
+                st.write(f"**Status:** {project['Status']}")
+                st.write(f"**Priority:** {project['Priority']}")
+                st.write(f"**Project State:** {project['Project State']}")
+                st.write(f"**Service Area:** {project['Service Area']}")
+                st.write(f"**Service Line:** {project['Service Line']}")
+            
+            with col2:
+                st.markdown("**Timeline**")
+                st.write(f"**Kick-Off Date:** {project['Kick-Off Date']}")
+                st.write(f"**Expected Completion:** {project['Expected DE Completion']}")
+                st.write(f"**Days Since Kickoff:** {project['Days Since Kickoff']}")
+                st.write(f"**Days Until SLA:** {project['Days Until SLA']}")
+                st.write(f"**OPW:** {project['OPW']}")
+                st.write(f"**Number of Devices:** {project['Number of Devices']}")
+            
+            # Display Facility Updates
+            if pd.notna(project['Facility Updates']):
+                st.markdown("**Facility Updates**")
+                st.markdown(f"```\n{project['Facility Updates']}\n```")
+            
+            # Display Comments with proper formatting
+            if pd.notna(project['Comments']):
+                st.markdown("**Comments History**")
+                st.markdown(f"```\n{project['Comments']}\n```")
     
     # Footer
     st.markdown("---")
     if 'Export Date' in df.columns and not df['Export Date'].isna().all():
         export_date = df['Export Date'].max()
-        st.caption(f"Data exported: {export_date.strftime('%Y-%m-%d %H:%M:%S')} | Refreshes when new data is uploaded")
+        st.caption(f"Data exported: {export_date.strftime('%Y-%m-%d %H:%M:%S')} | Auto-refreshes when new data is uploaded")
     else:
         st.caption("Cloud version - updates when new CSV files are uploaded")
 
