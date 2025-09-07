@@ -243,7 +243,7 @@ def export_to_excel(df):
 
 # Main app
 def main():
-    st.title("📋 MDICI Design Project Tracker")
+    st.title("📋 MDICI Design Tracker")
     
     # Show data source info
     st.caption("📊 Cloud Version - Data from CSV exports")
