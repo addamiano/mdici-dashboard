@@ -333,13 +333,52 @@ def main():
             help="Filter by kickoff date status"
         )
         
-        # Quick search by Defect ID
-        st.subheader("🔍 Quick Search")
+        # Enhanced search filters
+        st.subheader("🔍 Advanced Search")
+        
+        # Defect ID search
         defect_search = st.text_input(
             "Search by Defect ID:",
             placeholder="Enter Defect ID number...",
             help="Type a Defect ID to quickly find that project"
         )
+        
+        # Facility filter
+        st.subheader("🏥 Facility Filters")
+        facilities = ['All'] + sorted(df['Facility'].dropna().unique().tolist())
+        selected_facility = st.selectbox("Select Facility", facilities)
+        
+        # Service Line filter
+        service_lines = ['All'] + sorted(df['Service Line'].dropna().unique().tolist())
+        selected_service_line = st.selectbox("Select Service Line", service_lines)
+        
+        # ASA Assigned filter
+        asa_options = ['All'] + sorted([
+            asa.strip() for asa_list in df['ASA Assigned'].dropna().unique() 
+            for asa in str(asa_list).split('/') if asa.strip() and asa.strip() != 'nan'
+        ])
+        selected_asa = st.selectbox("Select ASA Assigned", asa_options)
+        
+        # OPW text search
+        opw_search = st.text_input(
+            "Search in OPW (project description):",
+            placeholder="Enter keywords to search in OPW field...",
+            help="Search for keywords within project descriptions"
+        )
+        
+        # IP search (searches in OPW and Comments)
+        ip_search = st.text_input(
+            "Search for IP addresses:",
+            placeholder="Enter IP address or partial IP...",
+            help="Search for IP addresses in OPW and Comments fields"
+        )
+        
+        # Clear filters button
+        st.markdown("---")
+        if st.button("🧹 Clear All Filters", use_container_width=True):
+            # Reset all session state variables to defaults
+            st.session_state.selected_states = ['Design', 'Firewall']
+            st.rerun()
     
     # Apply filters
     filtered_df = df.copy()
@@ -372,6 +411,65 @@ def main():
             st.info(f"🔍 Found {len(filtered_df)} projects matching '{defect_search}'")
         else:
             st.warning(f"❌ No projects found matching '{defect_search}'")
+    
+    # Apply Facility filter
+    if selected_facility != 'All':
+        filtered_df = filtered_df[filtered_df['Facility'] == selected_facility]
+    
+    # Apply Service Line filter
+    if selected_service_line != 'All':
+        filtered_df = filtered_df[filtered_df['Service Line'] == selected_service_line]
+    
+    # Apply ASA Assigned filter
+    if selected_asa != 'All':
+        mask = filtered_df['ASA Assigned'].astype(str).str.contains(selected_asa, case=False, na=False)
+        filtered_df = filtered_df[mask]
+    
+    # Apply OPW text search
+    if opw_search:
+        mask = filtered_df['OPW'].astype(str).str.contains(opw_search, case=False, na=False)
+        filtered_df = filtered_df[mask]
+        if len(filtered_df) == 0:
+            st.warning(f"❌ No projects found with '{opw_search}' in OPW description")
+        else:
+            st.info(f"🔍 Found {len(filtered_df)} projects with '{opw_search}' in OPW")
+    
+    # Apply IP search (searches in both OPW and Comments)
+    if ip_search:
+        opw_mask = filtered_df['OPW'].astype(str).str.contains(ip_search, case=False, na=False)
+        comments_mask = filtered_df['Comments'].astype(str).str.contains(ip_search, case=False, na=False)
+        combined_mask = opw_mask | comments_mask
+        filtered_df = filtered_df[combined_mask]
+        if len(filtered_df) == 0:
+            st.warning(f"❌ No projects found with '{ip_search}' in OPW or Comments")
+        else:
+            st.info(f"🔍 Found {len(filtered_df)} projects with '{ip_search}' in project details")
+    
+    # Show active filters summary
+    active_filters = []
+    if selected_states != sorted(df['Project State'].unique()):
+        active_filters.append(f"States: {', '.join(selected_states)}")
+    if selected_engineer != 'All':
+        active_filters.append(f"Engineer: {selected_engineer}")
+    if selected_status != df['Status'].unique().tolist():
+        active_filters.append(f"Status: {len(selected_status)} selected")
+    if date_filter_type != "All dates":
+        active_filters.append(f"Dates: {date_filter_type}")
+    if defect_search:
+        active_filters.append(f"Defect ID: {defect_search}")
+    if selected_facility != 'All':
+        active_filters.append(f"Facility: {selected_facility}")
+    if selected_service_line != 'All':
+        active_filters.append(f"Service Line: {selected_service_line}")
+    if selected_asa != 'All':
+        active_filters.append(f"ASA: {selected_asa}")
+    if opw_search:
+        active_filters.append(f"OPW: {opw_search}")
+    if ip_search:
+        active_filters.append(f"IP Search: {ip_search}")
+    
+    if active_filters:
+        st.info(f"🔍 **Active Filters:** {' | '.join(active_filters)} | **{len(filtered_df)} projects** match current filters")
     
     # Key Metrics - Only for Design projects for SLA tracking
     design_projects = filtered_df[filtered_df['Project State'] == 'Design']
