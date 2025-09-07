@@ -1,16 +1,7 @@
-<<<<<<< HEAD
 streamlit>=1.29.0
 pandas>=2.0.0
 plotly>=5.18.0
 pyodbc>=5.0.0
 sqlalchemy>=2.0.0
 openpyxl>=3.1.0
-=======
-streamlit>=1.29.0
-pandas>=2.0.0
-plotly>=5.18.0
-pyodbc>=5.0.0
-sqlalchemy>=2.0.0
-openpyxl>=3.1.0
->>>>>>> 6585b5e5b5bd2ec6938179fead84924568b060c4
 xlsxwriter>=3.1.0
