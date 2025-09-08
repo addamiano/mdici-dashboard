@@ -829,10 +829,10 @@ def main():
     with tab4:
         st.subheader("📈 Executive Summary")
         
-        # Overall project distribution
-        exec_col1, exec_col2 = st.columns(2)
-        
-        with exec_col1:
+        # Overall project distribution - Using single column layout for better visibility
+        # Service Area Chart
+        col1, col2, col3 = st.columns([1, 3, 1])  # Center the chart with 60% width
+        with col2:
             st.markdown("### 🏢 Active Projects by Service Area")
             # Get active projects only (Design, Firewall, Testing - excluding Enterprise placeholder)
             active_df = df[
@@ -853,11 +853,13 @@ def main():
                 text=service_area_counts.values
             )
             fig_area.update_traces(texttemplate='%{text}', textposition='outside')
-            fig_area.update_layout(height=400, showlegend=False)
+            fig_area.update_layout(height=450, showlegend=False)
             fig_area.update_coloraxes(showscale=False)  # Hide color scale
             st.plotly_chart(fig_area, use_container_width=True)
         
-        with exec_col2:
+        # Service Line Chart
+        col1, col2, col3 = st.columns([1, 3, 1])  # Center the chart
+        with col2:
             st.markdown("### 🔬 Active Projects by Service Line")
             service_line_counts = active_df['Service Line'].value_counts()
             
@@ -870,17 +872,18 @@ def main():
             )
             fig_line.update_traces(textposition='inside', textinfo='percent+label', textfont_size=14)
             fig_line.update_layout(
-                height=400,
-                margin=dict(l=20, r=20, t=40, b=20)
+                height=450,
+                margin=dict(l=50, r=50, t=50, b=50)
             )
             st.plotly_chart(fig_line, use_container_width=True)
         
         # Additional Charts - Native Plotly Implementation
         st.markdown("### 📊 Additional Project Insights")
         
-        chart_col1, chart_col2 = st.columns(2)
+        # Using single column layout for better visibility
+        chart_col1, chart_col2, chart_col3 = st.columns([1, 3, 1])
         
-        with chart_col1:
+        with chart_col2:
             st.markdown("#### Project State Distribution")
             # Filter for active project states, applying same transformations as SQL
             # Firewall maps to Design, Security maps to Complete (but we exclude Complete)
@@ -918,21 +921,23 @@ def main():
                     textfont_size=14
                 )
                 fig_state.update_layout(
-                    height=400,
-                    margin=dict(l=20, r=20, t=40, b=20),
+                    height=450,
+                    margin=dict(l=50, r=50, t=50, b=50),
                     legend=dict(
                         orientation="v",
                         yanchor="middle",
                         y=0.5,
                         xanchor="left",
-                        x=1.02
+                        x=1.05
                     )
                 )
                 st.plotly_chart(fig_state, use_container_width=True)
             else:
                 st.info("No active project state data available")
         
-        with chart_col2:
+        # CE Division Chart - separate row for better visibility
+        col1, col2, col3 = st.columns([1, 3, 1])
+        with col2:
             st.markdown("#### Projects by CE Division")
             # Filter for non-complete, non-cancelled projects
             ce_df = df.copy()
@@ -965,10 +970,11 @@ def main():
                     )
                     fig_ce.update_traces(texttemplate='%{text}', textposition='outside')
                     fig_ce.update_layout(
-                        height=400,
+                        height=450,
                         xaxis_tickangle=-45,
                         showlegend=False,
-                        margin=dict(l=20, r=20, t=40, b=40)
+                        margin=dict(l=40, r=40, t=60, b=80),
+                        yaxis=dict(range=[0, max(ce_counts.values) * 1.15])  # Add headroom for labels
                     )
                     st.plotly_chart(fig_ce, use_container_width=True)
                 else:
@@ -990,10 +996,11 @@ def main():
                             )
                             fig_priority.update_traces(texttemplate='%{text}', textposition='outside')
                             fig_priority.update_layout(
-                                height=400,
+                                height=450,
                                 xaxis_tickangle=-45,
                                 showlegend=False,
-                                margin=dict(l=20, r=20, t=40, b=40)
+                                margin=dict(l=40, r=40, t=60, b=80),
+                                yaxis=dict(range=[0, max(priority_counts.values) * 1.15])  # Add headroom
                             )
                             st.plotly_chart(fig_priority, use_container_width=True)
             else:
