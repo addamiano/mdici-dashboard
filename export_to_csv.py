@@ -103,7 +103,7 @@ def export_all_data():
         SELECT [Design Engineer], [Defect ID], [Priority], [Service Area],
         Facility, [Project State], [Service Line], [Kick-Off Date],
         OPW, [Number of Devices], [Facility Updates], [ASA Assigned], Comments,
-        [Testing Info Sent], [Actual Go-Live Date]
+        [Testing Info Sent], [DE Completion Date], [Actual Go-Live Date]
         FROM MDICI.dbo.defects
         ORDER BY 
             CASE 
@@ -177,6 +177,12 @@ def export_all_data():
         else None, axis=1
     )
     
+    df['Days to DE Completion'] = df.apply(
+        lambda row: (row['DE Completion Date'] - row['Kick-Off Date']).days 
+        if pd.notna(row['DE Completion Date']) and pd.notna(row['Kick-Off Date'])
+        else None, axis=1
+    )
+    
     df['Days to Completion'] = df.apply(
         lambda row: (row['Actual Go-Live Date'] - row['Kick-Off Date']).days 
         if pd.notna(row['Actual Go-Live Date']) and pd.notna(row['Kick-Off Date'])
@@ -195,13 +201,15 @@ def export_performance_data():
     engine = get_database_connection()
     
     query = """
-        SELECT [Design Engineer], [Defect ID], [Kick-Off Date], [Testing Info Sent], [Actual Go-Live Date],
+        SELECT [Design Engineer], [Defect ID], [Kick-Off Date], [Testing Info Sent], 
+        [DE Completion Date], [Actual Go-Live Date],
         DATEDIFF(day, [Kick-Off Date], [Testing Info Sent]) as Days_to_Testing,
+        DATEDIFF(day, [Kick-Off Date], [DE Completion Date]) as Days_to_DE_Completion,
         DATEDIFF(day, [Kick-Off Date], [Actual Go-Live Date]) as Days_to_Completion
         FROM MDICI.dbo.defects
         WHERE [Project State] IN ('Complete', 'Security')
         AND [Kick-Off Date] IS NOT NULL
-        AND [Testing Info Sent] IS NOT NULL
+        AND [DE Completion Date] IS NOT NULL
         AND [Kick-Off Date] >= DATEADD(month, -6, GETDATE())  -- Last 6 months
     """
     

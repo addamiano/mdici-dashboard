@@ -833,8 +833,11 @@ def main():
         
         with exec_col1:
             st.markdown("### 🏢 Active Projects by Service Area")
-            # Get active projects only (excluding Complete/Cancelled)
-            active_df = df[~df['Project State'].isin(['Complete', 'Cancelled'])]
+            # Get active projects only (excluding Complete/Cancelled and Enterprise placeholder)
+            active_df = df[
+                (~df['Project State'].isin(['Complete', 'Cancelled'])) &
+                (df['Service Area'] != 'Enterprise')
+            ]
             service_area_counts = active_df['Service Area'].value_counts()
             
             # Display as a bar chart
@@ -896,8 +899,9 @@ def main():
             )
             st.plotly_chart(fig_sla, use_container_width=True)
         
-        # Top Bottlenecks
+        # Top Bottlenecks (active_df already excludes Enterprise)
         st.markdown("### ⚠️ Current Bottlenecks")
+        st.caption("Excludes Enterprise placeholder projects")
         bottleneck_col1, bottleneck_col2, bottleneck_col3 = st.columns(3)
         
         with bottleneck_col1:
@@ -928,7 +932,7 @@ def main():
         st.markdown("---")
         with st.expander("👥 Engineer Performance Over Time (3-Year Rolling)", expanded=False):
             st.markdown("### Historical Engineer Performance Analysis")
-            st.caption("Shows DE SLA performance (21 days from Kick-Off to Expected DE Completion) - Excludes Enterprise and No Resource")
+            st.caption("Shows ACTUAL DE performance (Kick-Off to Testing Info Sent) - Excludes Enterprise and No Resource")
             
             # Use main dataset for complete engineer data
             # Filter for last 3 years and completed projects
@@ -939,7 +943,16 @@ def main():
             df_analysis = df.copy()
             df_analysis['Actual Go-Live Date'] = pd.to_datetime(df_analysis['Actual Go-Live Date'], errors='coerce')
             df_analysis['Kick-Off Date'] = pd.to_datetime(df_analysis['Kick-Off Date'], errors='coerce')
-            df_analysis['Expected DE Completion'] = pd.to_datetime(df_analysis['Expected DE Completion'], errors='coerce')
+            
+            # Use DE Completion Date if available, otherwise fall back to Testing Info Sent
+            if 'DE Completion Date' in df_analysis.columns:
+                df_analysis['DE Completion Date'] = pd.to_datetime(df_analysis['DE Completion Date'], errors='coerce')
+                actual_completion_col = 'DE Completion Date'
+                st.caption("Using ACTUAL DE Completion Date from database - Excludes Enterprise and No Resource")
+            else:
+                df_analysis['Testing Info Sent'] = pd.to_datetime(df_analysis['Testing Info Sent'], errors='coerce')
+                actual_completion_col = 'Testing Info Sent'
+                st.caption("Using Testing Info Sent as proxy for DE completion - Excludes Enterprise and No Resource")
             
             # Filter: Last 3 years, completed projects, exclude Enterprise and No Resource
             perf_3yr = df_analysis[
@@ -951,13 +964,13 @@ def main():
             ]
             
             if len(perf_3yr) > 0:
-                # Calculate Days from Kick-Off to Expected DE Completion
-                perf_3yr['Days_to_DE_Completion'] = (perf_3yr['Expected DE Completion'] - perf_3yr['Kick-Off Date']).dt.days
+                # Calculate ACTUAL Days from Kick-Off to DE Completion
+                perf_3yr['Days_to_DE_Completion'] = (perf_3yr[actual_completion_col] - perf_3yr['Kick-Off Date']).dt.days
                 
-                # Filter out invalid dates (1900 placeholder dates)
+                # Filter out invalid dates and missing completion dates
                 perf_3yr = perf_3yr[
                     (perf_3yr['Kick-Off Date'] > '1950-01-01') &
-                    (perf_3yr['Expected DE Completion'] > '1950-01-01')
+                    (perf_3yr[actual_completion_col].notna())
                 ]
                 
                 if len(perf_3yr) > 0:
@@ -1023,7 +1036,7 @@ def main():
                     
                     # Detailed table
                     st.markdown("#### Detailed Engineer Metrics (3-Year Rolling)")
-                    st.caption("Excludes Enterprise service area and No Resource assignments")
+                    st.caption("Based on ACTUAL completion dates (Testing Info Sent) - Excludes Enterprise service area and No Resource assignments")
                     st.dataframe(
                         engineer_metrics.round(1),
                         use_container_width=True,
