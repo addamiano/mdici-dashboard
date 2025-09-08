@@ -436,20 +436,35 @@ def main():
         selected_engineer = st.selectbox("Design Engineer:", engineers)
     
     with state_col3:
-        # Quick filter buttons
-        button_col1, button_col2, button_col3 = st.columns(3)
+        # Quick filter buttons - expanded with saved presets
+        st.write("**Quick Filters:**")
+        button_col1, button_col2 = st.columns(2)
         with button_col1:
-            if st.button("🎯 Active Only", help="Design, Firewall, Testing states"):
+            if st.button("🎯 Active Only", help="Design, Firewall, Testing states", use_container_width=True):
                 st.session_state.selected_states = ['Design', 'Firewall', 'Testing']
                 st.rerun()
-        with button_col2:
-            if st.button("⏳ Intake Only", help="Projects awaiting kickoff"):
+            if st.button("⏳ Intake Only", help="Projects awaiting kickoff", use_container_width=True):
                 st.session_state.selected_states = ['Intake']
                 st.rerun()
-        with button_col3:
-            if st.button("📋 All Projects", help="Show all project states"):
+            if st.button("📋 All Projects", help="Show all project states", use_container_width=True):
                 project_states = sorted(df['Project State'].unique())
                 st.session_state.selected_states = project_states
+                st.rerun()
+        with button_col2:
+            if st.button("🚨 Critical/Overdue", help="Overdue + Attention Needed projects", use_container_width=True):
+                # Filter for overdue and attention needed projects
+                st.session_state.selected_states = ['Design', 'Firewall', 'Testing']
+                st.session_state.filter_critical = True
+                st.rerun()
+            if st.button("📅 This Week's Kickoffs", help="Projects with kickoffs in next 7 days", use_container_width=True):
+                st.session_state.selected_states = ['Design', 'Firewall', 'Testing', 'Intake']
+                st.session_state.filter_week_kickoffs = True
+                st.rerun()
+            if st.button("🔄 Reset Filters", help="Clear all filters", use_container_width=True):
+                for key in list(st.session_state.keys()):
+                    if key.startswith('filter_') or key.startswith('top_'):
+                        del st.session_state[key]
+                st.session_state.selected_states = ['Design', 'Firewall']
                 st.rerun()
     
     with state_col4:
@@ -465,6 +480,26 @@ def main():
     if selected_engineer != 'All':
         filtered_df = filtered_df[filtered_df['Design Engineer'] == selected_engineer]
     
+    
+    # Apply special preset filters
+    if st.session_state.get('filter_critical', False):
+        # Filter for Critical/Overdue projects
+        filtered_df = filtered_df[filtered_df['Status'].isin(['Overdue', 'Attention Needed'])]
+        st.session_state.filter_critical = False  # Reset after applying
+    
+    if st.session_state.get('filter_week_kickoffs', False):
+        # Filter for this week's kickoffs (next 7 days)
+        from datetime import datetime, timedelta
+        today = datetime.now().date()
+        week_from_now = today + timedelta(days=7)
+        
+        # Convert Kick-Off Date to datetime
+        filtered_df['Kick-Off Date'] = pd.to_datetime(filtered_df['Kick-Off Date'], errors='coerce')
+        
+        # Filter for kickoffs between today and 7 days from now
+        mask = (filtered_df['Kick-Off Date'].dt.date >= today) & (filtered_df['Kick-Off Date'].dt.date <= week_from_now)
+        filtered_df = filtered_df[mask]
+        st.session_state.filter_week_kickoffs = False  # Reset after applying
     
     # Apply all filters
     if defect_search:
@@ -513,6 +548,19 @@ def main():
     if active_filters:
         st.success(f"🎯 **{len(filtered_df)} projects** | Filters: {' • '.join(active_filters)}", icon="🔍")
     
+    # Visual Alert Box for Critical Projects
+    overdue_projects = filtered_df[filtered_df['Status'] == 'Overdue']
+    attention_projects = filtered_df[filtered_df['Status'] == 'Attention Needed']
+    
+    if len(overdue_projects) > 0 or len(attention_projects) > 0:
+        alert_col1, alert_col2 = st.columns(2)
+        with alert_col1:
+            if len(overdue_projects) > 0:
+                st.error(f"🚨 **{len(overdue_projects)} OVERDUE PROJECTS** - Immediate attention required!")
+        with alert_col2:
+            if len(attention_projects) > 0:
+                st.warning(f"⚠️ **{len(attention_projects)} projects need attention** - Approaching SLA deadline")
+    
     # Key Metrics - Only for Design projects for SLA tracking
     design_projects = filtered_df[filtered_df['Project State'] == 'Design']
     
@@ -533,16 +581,24 @@ def main():
     with col4:
         # Only count overdue for Design projects (SLA only applies to them)
         overdue_count = len(design_projects[design_projects['Status'] == 'Overdue'])
-        st.metric("Overdue Design", overdue_count, help="Design projects past 21-day SLA")
+        # Use red color for overdue metric if > 0
+        if overdue_count > 0:
+            st.metric("🔴 Overdue Design", overdue_count, help="Design projects past 21-day SLA")
+        else:
+            st.metric("Overdue Design", overdue_count, help="Design projects past 21-day SLA")
     
     with col5:
         # Only urgent Design projects matter for SLA
         urgent = len(design_projects[(design_projects['Days Until SLA'] <= 3) & 
                                    (design_projects['Days Until SLA'].notna())])
-        st.metric("Urgent Design (<3 days)", urgent, help="Design projects near SLA deadline")
+        # Use yellow/orange color for urgent if > 0
+        if urgent > 0:
+            st.metric("🟡 Urgent Design (<3 days)", urgent, help="Design projects near SLA deadline")
+        else:
+            st.metric("Urgent Design (<3 days)", urgent, help="Design projects near SLA deadline")
     
-    # Tabs for different views
-    tab1, tab2, tab3 = st.tabs(["📊 Active Projects", "👥 By Engineer", "📝 Detailed View"])
+    # Tabs for different views - added Executive Summary
+    tab1, tab2, tab3, tab4 = st.tabs(["📊 Active Projects", "👥 By Engineer", "📝 Detailed View", "📈 Executive Summary"])
     
     with tab1:
         st.subheader("📋 Project Overview")
@@ -768,6 +824,200 @@ def main():
             if pd.notna(project['Comments']):
                 st.markdown("**Comments History**")
                 st.markdown(f"```\n{project['Comments']}\n```")
+    
+    with tab4:
+        st.subheader("📈 Executive Summary")
+        
+        # Overall project distribution
+        exec_col1, exec_col2 = st.columns(2)
+        
+        with exec_col1:
+            st.markdown("### 🏢 Active Projects by Service Area")
+            # Get active projects only (excluding Complete/Cancelled)
+            active_df = df[~df['Project State'].isin(['Complete', 'Cancelled'])]
+            service_area_counts = active_df['Service Area'].value_counts()
+            
+            # Display as a bar chart
+            import plotly.express as px
+            fig_area = px.bar(
+                x=service_area_counts.values,
+                y=service_area_counts.index,
+                orientation='h',
+                title=f"Total Active Projects by Service Area ({len(active_df)} total)",
+                labels={'x': 'Number of Projects', 'y': 'Service Area'},
+                color=service_area_counts.values,
+                color_continuous_scale='Blues'
+            )
+            fig_area.update_layout(height=400, showlegend=False)
+            st.plotly_chart(fig_area, use_container_width=True)
+        
+        with exec_col2:
+            st.markdown("### 🔬 Active Projects by Service Line")
+            service_line_counts = active_df['Service Line'].value_counts()
+            
+            # Display as a pie chart
+            fig_line = px.pie(
+                values=service_line_counts.values,
+                names=service_line_counts.index,
+                title=f"Distribution by Service Line ({len(active_df)} total)",
+                hole=0.4
+            )
+            fig_line.update_traces(textposition='inside', textinfo='percent+label')
+            fig_line.update_layout(height=400)
+            st.plotly_chart(fig_line, use_container_width=True)
+        
+        # SLA Compliance Trending
+        st.markdown("### 📊 SLA Compliance Trends")
+        if not performance_df.empty:
+            # Group by month and calculate SLA rate
+            performance_df['Actual Go-Live Date'] = pd.to_datetime(performance_df['Actual Go-Live Date'], errors='coerce')
+            performance_df['Month'] = performance_df['Actual Go-Live Date'].dt.to_period('M')
+            
+            monthly_sla = performance_df.groupby('Month').apply(
+                lambda x: (len(x[x['Days_to_Testing'] <= 21]) / len(x) * 100) if len(x) > 0 else 0
+            ).reset_index(name='SLA_Rate')
+            
+            # Convert Period to string for display
+            monthly_sla['Month'] = monthly_sla['Month'].astype(str)
+            
+            # Create line chart
+            fig_sla = px.line(
+                monthly_sla,
+                x='Month',
+                y='SLA_Rate',
+                title="Monthly SLA Compliance Rate (≤21 days)",
+                markers=True
+            )
+            fig_sla.add_hline(y=90, line_dash="dash", line_color="green", annotation_text="Target: 90%")
+            fig_sla.update_layout(
+                yaxis_title="SLA Compliance %",
+                xaxis_title="Month",
+                height=350
+            )
+            st.plotly_chart(fig_sla, use_container_width=True)
+        
+        # Top Bottlenecks
+        st.markdown("### ⚠️ Current Bottlenecks")
+        bottleneck_col1, bottleneck_col2, bottleneck_col3 = st.columns(3)
+        
+        with bottleneck_col1:
+            # Projects stuck in Firewall
+            firewall_df = active_df[active_df['Project State'] == 'Firewall']
+            st.metric("🔥 Stuck in Firewall", len(firewall_df), 
+                     help="Projects waiting for firewall configuration")
+        
+        with bottleneck_col2:
+            # Projects in Testing > 30 days
+            testing_df = active_df[active_df['Project State'] == 'Testing']
+            if 'Days Since Kickoff' in testing_df.columns:
+                long_testing = testing_df[testing_df['Days Since Kickoff'] > 30]
+                st.metric("🧪 Long Testing (>30 days)", len(long_testing),
+                         help="Projects in testing phase for over 30 days")
+            else:
+                st.metric("🧪 In Testing", len(testing_df))
+        
+        with bottleneck_col3:
+            # Intake without kickoff
+            intake_df = active_df[(active_df['Project State'] == 'Intake') & 
+                                 (active_df['Kick-Off Date'] == '1900-01-01')]
+            st.metric("📥 Awaiting Kickoff", len(intake_df),
+                     help="Intake projects without kickoff date")
+        
+        # MODULAR SECTION: Engineer Performance Over Time (3-year rolling)
+        # This section can be easily removed by deleting/commenting from here to END MODULAR SECTION
+        st.markdown("---")
+        with st.expander("👥 Engineer Performance Over Time (3-Year Rolling)", expanded=False):
+            st.markdown("### Historical Engineer Performance Analysis")
+            st.caption("Shows performance metrics for the last 3 years of completed projects")
+            
+            if not performance_df.empty:
+                # Filter for last 3 years
+                from datetime import datetime, timedelta
+                three_years_ago = datetime.now() - timedelta(days=365*3)
+                
+                # Convert date and filter
+                performance_df['Actual Go-Live Date'] = pd.to_datetime(performance_df['Actual Go-Live Date'], errors='coerce')
+                perf_3yr = performance_df[performance_df['Actual Go-Live Date'] >= three_years_ago]
+                
+                if len(perf_3yr) > 0:
+                    # Calculate metrics by engineer
+                    engineer_metrics = perf_3yr.groupby('Design Engineer').agg({
+                        'Days_to_Testing': 'mean',
+                        'Days_to_Completion': 'mean',
+                        'Defect ID': 'count'
+                    }).reset_index()
+                    
+                    engineer_metrics.columns = ['Design Engineer', 'Avg Days to Testing', 'Avg Days to Completion', 'Projects Completed']
+                    
+                    # Calculate SLA compliance rate per engineer
+                    sla_compliance = perf_3yr.groupby('Design Engineer').apply(
+                        lambda x: (len(x[x['Days_to_Testing'] <= 21]) / len(x) * 100) if len(x) > 0 else 0
+                    ).reset_index(name='SLA Compliance %')
+                    
+                    # Merge metrics
+                    engineer_metrics = pd.merge(engineer_metrics, sla_compliance, on='Design Engineer')
+                    
+                    # Sort by SLA compliance
+                    engineer_metrics = engineer_metrics.sort_values('SLA Compliance %', ascending=False)
+                    
+                    # Display metrics
+                    perf_col1, perf_col2 = st.columns(2)
+                    
+                    with perf_col1:
+                        # Bar chart of SLA compliance
+                        fig_eng_sla = px.bar(
+                            engineer_metrics.head(15),  # Top 15 engineers
+                            x='SLA Compliance %',
+                            y='Design Engineer',
+                            orientation='h',
+                            title="SLA Compliance by Engineer (Top 15)",
+                            color='SLA Compliance %',
+                            color_continuous_scale='RdYlGn',
+                            range_color=[0, 100]
+                        )
+                        fig_eng_sla.add_vline(x=90, line_dash="dash", line_color="green", annotation_text="Target")
+                        fig_eng_sla.update_layout(height=400)
+                        st.plotly_chart(fig_eng_sla, use_container_width=True)
+                    
+                    with perf_col2:
+                        # Scatter plot of volume vs performance
+                        fig_eng_vol = px.scatter(
+                            engineer_metrics,
+                            x='Projects Completed',
+                            y='Avg Days to Testing',
+                            size='SLA Compliance %',
+                            color='SLA Compliance %',
+                            hover_data=['Design Engineer'],
+                            title="Volume vs Performance (3-Year)",
+                            color_continuous_scale='RdYlGn',
+                            range_color=[0, 100]
+                        )
+                        fig_eng_vol.add_hline(y=21, line_dash="dash", line_color="red", annotation_text="SLA Limit")
+                        fig_eng_vol.update_layout(height=400)
+                        st.plotly_chart(fig_eng_vol, use_container_width=True)
+                    
+                    # Detailed table
+                    st.markdown("#### Detailed Engineer Metrics (3-Year Rolling)")
+                    st.dataframe(
+                        engineer_metrics.round(1),
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={
+                            "Avg Days to Testing": st.column_config.NumberColumn(format="%.1f days"),
+                            "Avg Days to Completion": st.column_config.NumberColumn(format="%.1f days"),
+                            "SLA Compliance %": st.column_config.ProgressColumn(
+                                min_value=0,
+                                max_value=100,
+                                format="%.1f%%"
+                            ),
+                            "Projects Completed": st.column_config.NumberColumn(format="%d")
+                        }
+                    )
+                else:
+                    st.info("No performance data available for the last 3 years")
+            else:
+                st.info("No performance data available")
+        # END MODULAR SECTION: Engineer Performance Over Time
     
     # Footer
     st.markdown("---")
