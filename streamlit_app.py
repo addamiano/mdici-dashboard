@@ -315,38 +315,46 @@ def main():
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             avg_to_testing_6m = perf_6m['Days_to_Testing'].mean() if len(perf_6m) > 0 else 0
-            st.metric("Kickoff → Testing Info", f"{avg_to_testing_6m:.1f} days")
+            st.metric("Kickoff → Testing Info", f"{avg_to_testing_6m:.1f} days", 
+                     help="Average days from project kickoff to when testing information is sent to the site")
         with col2:
             avg_to_completion_6m = perf_6m['Days_to_Completion'].mean() if len(perf_6m) > 0 else 0
-            st.metric("Kickoff → Completion", f"{avg_to_completion_6m:.1f} days")
+            st.metric("Kickoff → Completion", f"{avg_to_completion_6m:.1f} days",
+                     help="Average total project duration from kickoff to go-live date")
         with col3:
             # Calculate Testing Info → Completion (new metric)
             testing_to_completion_6m = perf_6m['Days_to_Completion'] - perf_6m['Days_to_Testing'] 
             avg_testing_to_completion_6m = testing_to_completion_6m.dropna().mean() if len(perf_6m) > 0 else 0
-            st.metric("Testing Info → Completion", f"{avg_testing_to_completion_6m:.1f} days")
+            st.metric("Testing Info → Completion", f"{avg_testing_to_completion_6m:.1f} days",
+                     help="Average days from when testing info is sent until project goes live (site testing & implementation phase)")
         with col4:
             sla_met_6m = len(perf_6m[perf_6m['Days_to_Testing'] <= 21]) if len(perf_6m) > 0 else 0
             sla_rate_6m = (sla_met_6m / len(perf_6m) * 100) if len(perf_6m) > 0 else 0
-            st.metric("SLA Met Rate (≤21 days)", f"{sla_rate_6m:.1f}%")
+            st.metric("SLA Met Rate (≤21 days)", f"{sla_rate_6m:.1f}%",
+                     help="Percentage of projects that met the 21-day SLA from kickoff to testing info sent")
         
         # 12 month metrics  
         st.markdown("**Last 12 Months:**")
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             avg_to_testing_12m = perf_12m['Days_to_Testing'].mean() if len(perf_12m) > 0 else 0
-            st.metric("Kickoff → Testing Info", f"{avg_to_testing_12m:.1f} days")
+            st.metric("Kickoff → Testing Info", f"{avg_to_testing_12m:.1f} days",
+                     help="Average days from project kickoff to when testing information is sent to the site")
         with col2:
             avg_to_completion_12m = perf_12m['Days_to_Completion'].mean() if len(perf_12m) > 0 else 0
-            st.metric("Kickoff → Completion", f"{avg_to_completion_12m:.1f} days")
+            st.metric("Kickoff → Completion", f"{avg_to_completion_12m:.1f} days",
+                     help="Average total project duration from kickoff to go-live date")
         with col3:
             # Calculate Testing Info → Completion (new metric)
             testing_to_completion_12m = perf_12m['Days_to_Completion'] - perf_12m['Days_to_Testing']
             avg_testing_to_completion_12m = testing_to_completion_12m.dropna().mean() if len(perf_12m) > 0 else 0
-            st.metric("Testing Info → Completion", f"{avg_testing_to_completion_12m:.1f} days")
+            st.metric("Testing Info → Completion", f"{avg_testing_to_completion_12m:.1f} days",
+                     help="Average days from when testing info is sent until project goes live (site testing & implementation phase)")
         with col4:
             sla_met_12m = len(perf_12m[perf_12m['Days_to_Testing'] <= 21]) if len(perf_12m) > 0 else 0
             sla_rate_12m = (sla_met_12m / len(perf_12m) * 100) if len(perf_12m) > 0 else 0
-            st.metric("SLA Met Rate (≤21 days)", f"{sla_rate_12m:.1f}%")
+            st.metric("SLA Met Rate (≤21 days)", f"{sla_rate_12m:.1f}%",
+                     help="Percentage of projects that met the 21-day SLA from kickoff to testing info sent")
     
     # Search & Filter section - moved above data grid for better UX
     st.markdown("---")
