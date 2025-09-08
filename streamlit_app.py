@@ -9,6 +9,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, date, timedelta
 from io import BytesIO
+import os
 
 # Page configuration
 st.set_page_config(
@@ -849,8 +850,10 @@ def main():
                 title=f"Total Active Projects by Service Area ({len(active_df)} total)",
                 labels={'x': 'Number of Projects', 'y': 'Service Area'},
                 color=service_area_counts.values,
-                color_continuous_scale='Blues'
+                color_continuous_scale='Blues',
+                text=service_area_counts.values
             )
+            fig_area.update_traces(texttemplate='%{text}', textposition='outside')
             fig_area.update_layout(height=400, showlegend=False)
             st.plotly_chart(fig_area, use_container_width=True)
         
@@ -868,6 +871,27 @@ def main():
             fig_line.update_traces(textposition='inside', textinfo='percent+label')
             fig_line.update_layout(height=400)
             st.plotly_chart(fig_line, use_container_width=True)
+        
+        # Additional Charts from SQL Scripts
+        st.markdown("### 📊 Additional Project Insights")
+        
+        chart_col1, chart_col2 = st.columns(2)
+        
+        with chart_col1:
+            # Display Project State Distribution chart if it exists
+            if os.path.exists('02_page_2_of_FY_Data.png'):
+                st.markdown("#### Project State Distribution")
+                st.image('02_page_2_of_FY_Data.png', use_column_width=True)
+            else:
+                st.info("Project State Distribution chart not available. Run 02_SQL_current_active_projects.py to generate.")
+        
+        with chart_col2:
+            # Display CE Division chart if it exists
+            if os.path.exists('04_page_4_of_FY_Data.png'):
+                st.markdown("#### Projects by CE Division")
+                st.image('04_page_4_of_FY_Data.png', use_column_width=True)
+            else:
+                st.info("CE Division chart not available. Run 04_SQL_current_active_by_ce_division.py to generate.")
         
         # SLA Compliance Trending
         st.markdown("### 📊 SLA Compliance Trends")

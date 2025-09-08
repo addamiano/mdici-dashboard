@@ -56,6 +56,21 @@ def export_data():
             file_size = os.path.getsize(file_path) / (1024 * 1024)  # MB
             print(f"✅ Found {file_path} ({file_size:.1f} MB)")
     
+    # Run the additional chart generation scripts (02 and 04 only)
+    print("\n📊 Generating additional charts...")
+    chart_scripts = [
+        ("02_SQL_current_active_projects.py", "Project State Distribution"),
+        ("04_SQL_current_active_by_ce_division.py", "Projects by CE Division")
+    ]
+    
+    for script, description in chart_scripts:
+        if os.path.exists(script):
+            if not run_command(f"python {script}", f"Generating {description} chart"):
+                print(f"⚠️ Warning: Failed to generate {description} chart")
+                # Continue even if chart generation fails
+        else:
+            print(f"⚠️ Chart script not found: {script}")
+    
     return True
 
 def setup_git_repo():
@@ -140,7 +155,9 @@ def commit_and_push():
         "streamlit_app.py",
         "requirements.txt", 
         "mdici_projects_latest.csv",
-        "mdici_performance_latest.csv"
+        "mdici_performance_latest.csv",
+        "02_page_2_of_FY_Data.png",
+        "04_page_4_of_FY_Data.png"
     ]
     
     for file_path in files_to_commit:
