@@ -829,191 +829,134 @@ def main():
     with tab4:
         st.subheader("📈 Executive Summary")
         
-        # Overall project distribution - Using single column layout for better visibility
-        # Service Area Chart
-        col1, col2, col3 = st.columns([1, 3, 1])  # Center the chart with 60% width
-        with col2:
-            st.markdown("### 🏢 Active Projects by Service Area")
-            # Get active projects only (Design, Firewall, Testing - excluding Enterprise placeholder)
-            active_df = df[
-                (df['Project State'].isin(['Design', 'Firewall', 'Testing'])) &
-                (df['Service Area'] != 'Enterprise')
-            ]
-            service_area_counts = active_df['Service Area'].value_counts()
+        # Get active projects data
+        active_df = df[
+            (df['Project State'].isin(['Design', 'Firewall', 'Testing'])) &
+            (df['Service Area'] != 'Enterprise')
+        ]
+        
+        import plotly.express as px
+        
+        # CHART 1: Service Area - Full width
+        st.markdown("### 🏢 Active Projects by Service Area")
+        service_area_counts = active_df['Service Area'].value_counts()
+        fig_area = px.bar(
+            x=service_area_counts.values,
+            y=service_area_counts.index,
+            orientation='h',
+            title=f"Total Active Projects by Service Area ({len(active_df)} total)",
+            labels={'x': 'Number of Projects', 'y': 'Service Area'},
+            color_discrete_sequence=['#4472C4'],
+            text=service_area_counts.values
+        )
+        fig_area.update_traces(texttemplate='%{text}', textposition='outside')
+        fig_area.update_layout(
+            height=400,
+            showlegend=False,
+            margin=dict(l=80, r=80, t=60, b=60)
+        )
+        st.plotly_chart(fig_area, use_container_width=True)
+        
+        st.markdown("---")  # Separator
+        
+        # CHART 2: Service Line - Full width  
+        st.markdown("### 🔬 Active Projects by Service Line")
+        service_line_counts = active_df['Service Line'].value_counts()
+        fig_line = px.pie(
+            values=service_line_counts.values,
+            names=service_line_counts.index,
+            title=f"Distribution by Service Line ({len(active_df)} total)",
+            hole=0.3
+        )
+        fig_line.update_traces(textposition='inside', textinfo='percent+label', textfont_size=16)
+        fig_line.update_layout(
+            height=500,
+            margin=dict(l=100, r=100, t=80, b=80)
+        )
+        st.plotly_chart(fig_line, use_container_width=True)
+        
+        st.markdown("---")  # Separator
+        
+        # CHART 3: Project State Distribution - Full width
+        st.markdown("### 📊 Project State Distribution")
+        state_df = df.copy()
+        state_df['Project State'] = state_df['Project State'].replace('Firewall', 'Design')
+        active_states = state_df[
+            (state_df['Project State'].isin(['Testing', 'Design', 'Intake', 'Hold'])) &
+            (~state_df['Project State'].isin(['Complete', 'Cancelled', 'Security']))
+        ]
+        
+        if not active_states.empty:
+            state_counts = active_states['Project State'].value_counts()
+            colors = {
+                'Design': '#6c5ea4',  
+                'Hold': '#1c7f40',    
+                'Intake': '#00ad8d',  
+                'Testing': '#c15289'
+            }
             
-            # Display as a bar chart
-            import plotly.express as px
-            fig_area = px.bar(
-                x=service_area_counts.values,
-                y=service_area_counts.index,
-                orientation='h',
-                title=f"Total Active Projects by Service Area ({len(active_df)} total)",
-                labels={'x': 'Number of Projects', 'y': 'Service Area'},
-                color_discrete_sequence=['#4472C4'],  # Single color instead of scale
-                text=service_area_counts.values
+            fig_state = px.pie(
+                values=state_counts.values,
+                names=state_counts.index,
+                title=f"Active Projects by State ({len(active_states)} total)",
+                color=state_counts.index,
+                color_discrete_map=colors
             )
-            fig_area.update_traces(texttemplate='%{text}', textposition='outside')
-            fig_area.update_layout(height=450, showlegend=False)
-            fig_area.update_coloraxes(showscale=False)  # Hide color scale
-            st.plotly_chart(fig_area, use_container_width=True)
+            fig_state.update_traces(
+                textposition='inside',
+                textinfo='value+label',
+                textfont_size=16
+            )
+            fig_state.update_layout(
+                height=500,
+                margin=dict(l=100, r=100, t=80, b=80)
+            )
+            st.plotly_chart(fig_state, use_container_width=True)
+        else:
+            st.info("No active project state data available")
         
-        # Service Line Chart
-        col1, col2, col3 = st.columns([1, 3, 1])  # Center the chart
-        with col2:
-            st.markdown("### 🔬 Active Projects by Service Line")
-            service_line_counts = active_df['Service Line'].value_counts()
+        st.markdown("---")  # Separator
+        
+        # CHART 4: CE Division - Full width
+        st.markdown("### 🏢 Projects by CE Division")
+        ce_df = df.copy()
+        ce_df['Project State'] = ce_df['Project State'].replace({
+            'Firewall': 'Design',
+            'Security': 'Complete'
+        })
+        ce_active = ce_df[~ce_df['Project State'].isin(['Complete', 'Cancelled'])]
+        
+        if 'CE Division' in ce_df.columns:
+            ce_with_division = ce_active[ce_active['CE Division'].notna()]
             
-            # Display as a pie chart
-            fig_line = px.pie(
-                values=service_line_counts.values,
-                names=service_line_counts.index,
-                title=f"Distribution by Service Line ({len(active_df)} total)",
-                hole=0.3
-            )
-            fig_line.update_traces(textposition='inside', textinfo='percent+label', textfont_size=14)
-            fig_line.update_layout(
-                height=450,
-                margin=dict(l=50, r=50, t=50, b=50)
-            )
-            st.plotly_chart(fig_line, use_container_width=True)
-        
-        # Additional Charts - Native Plotly Implementation
-        st.markdown("### 📊 Additional Project Insights")
-        
-        # Project State Distribution Chart - centered with 60% width
-        state_col1, state_col2, state_col3 = st.columns([1, 3, 1])
-        
-        with state_col2:
-            st.markdown("#### Project State Distribution")
-            # Filter for active project states, applying same transformations as SQL
-            # Firewall maps to Design, Security maps to Complete (but we exclude Complete)
-            state_df = df.copy()
-            # Map Firewall to Design
-            state_df['Project State'] = state_df['Project State'].replace('Firewall', 'Design')
-            # Filter for active states only (excluding Complete, Cancelled, and mapped Security)
-            active_states = state_df[
-                (state_df['Project State'].isin(['Testing', 'Design', 'Intake', 'Hold'])) &
-                (~state_df['Project State'].isin(['Complete', 'Cancelled', 'Security']))
-            ]
-            
-            if not active_states.empty:
-                state_counts = active_states['Project State'].value_counts()
+            if not ce_with_division.empty:
+                ce_counts = ce_with_division['CE Division'].value_counts().sort_index()
                 
-                # Define colors matching the original chart
-                colors = {
-                    'Design': '#6c5ea4',  
-                    'Hold': '#1c7f40',    
-                    'Intake': '#00ad8d',  
-                    'Testing': '#c15289'
-                }
-                
-                # Create pie chart
-                fig_state = px.pie(
-                    values=state_counts.values,
-                    names=state_counts.index,
-                    title=f"Active Projects by State ({len(active_states)} total)",
-                    color=state_counts.index,
-                    color_discrete_map=colors
+                fig_ce = px.bar(
+                    x=ce_counts.index,
+                    y=ce_counts.values,
+                    title=f"Active Projects by CE Division ({len(ce_with_division)} total)",
+                    labels={'x': 'CE Division', 'y': 'Number of Projects'},
+                    color_discrete_sequence=['#6c5ea4'],
+                    text=ce_counts.values
                 )
-                fig_state.update_traces(
-                    textposition='inside',
-                    textinfo='value+label',
-                    textfont_size=14
+                fig_ce.update_traces(texttemplate='%{text}', textposition='outside')
+                fig_ce.update_layout(
+                    height=500,
+                    xaxis_tickangle=-45,
+                    showlegend=False,
+                    margin=dict(l=80, r=80, t=100, b=120),
+                    yaxis=dict(
+                        range=[0, max(ce_counts.values) * 1.3],
+                        title="Number of Projects"
+                    ),
+                    xaxis=dict(title="CE Division")
                 )
-                fig_state.update_layout(
-                    height=450,
-                    margin=dict(l=50, r=50, t=50, b=50),
-                    legend=dict(
-                        orientation="v",
-                        yanchor="middle",
-                        y=0.5,
-                        xanchor="left",
-                        x=1.05
-                    )
-                )
-                st.plotly_chart(fig_state, use_container_width=True)
+                st.plotly_chart(fig_ce, use_container_width=True)
             else:
-                st.info("No active project state data available")
-        
-        # CE Division Chart - separate row for better visibility  
-        ce_col1, ce_col2, ce_col3 = st.columns([1, 3, 1])
-        with ce_col2:
-            st.markdown("#### Projects by CE Division")
-            # Filter for non-complete, non-cancelled projects
-            ce_df = df.copy()
-            # Map states: Firewall->Design, Security->Complete
-            ce_df['Project State'] = ce_df['Project State'].replace({
-                'Firewall': 'Design',
-                'Security': 'Complete'
-            })
-            # Exclude Complete and Cancelled
-            ce_active = ce_df[
-                (~ce_df['Project State'].isin(['Complete', 'Cancelled']))
-            ]
-            
-            # Check if CE Division column exists and has data
-            if 'CE Division' in ce_df.columns:
-                # Further filter for non-null CE Division values
-                ce_with_division = ce_active[ce_active['CE Division'].notna()]
-                
-                if not ce_with_division.empty:
-                    ce_counts = ce_with_division['CE Division'].value_counts().sort_index()
-                    
-                    # Create bar chart
-                    fig_ce = px.bar(
-                        x=ce_counts.index,
-                        y=ce_counts.values,
-                        title=f"Active Projects by CE Division ({len(ce_with_division)} total)",
-                        labels={'x': 'CE Division', 'y': 'Number of Projects'},
-                        color_discrete_sequence=['#6c5ea4'],  # Match the purple color
-                        text=ce_counts.values
-                    )
-                    fig_ce.update_traces(texttemplate='%{text}', textposition='outside')
-                    fig_ce.update_layout(
-                        height=500,  # Increased height
-                        xaxis_tickangle=-45,
-                        showlegend=False,
-                        margin=dict(l=60, r=60, t=80, b=100),  # More generous margins
-                        yaxis=dict(
-                            range=[0, max(ce_counts.values) * 1.25],  # More headroom
-                            title="Number of Projects"
-                        ),
-                        xaxis=dict(title="CE Division"),
-                        title=dict(
-                            x=0.5,  # Center the title
-                            font=dict(size=16)
-                        )
-                    )
-                    st.plotly_chart(fig_ce, use_container_width=True)
-                else:
-                    # Show message that CE Division data is not populated
-                    st.info("CE Division data is not populated in the database. Showing Priority distribution instead.")
-                    # Show Priority chart as fallback
-                    if not ce_active.empty and 'Priority' in ce_active.columns:
-                        priority_active = ce_active[ce_active['Priority'].notna()]
-                        if not priority_active.empty:
-                            priority_counts = priority_active['Priority'].value_counts().sort_index()
-                            
-                            fig_priority = px.bar(
-                                x=priority_counts.index,
-                                y=priority_counts.values,
-                                title=f"Active Projects by Priority ({len(priority_active)} total)",
-                                labels={'x': 'Priority', 'y': 'Number of Projects'},
-                                color_discrete_sequence=['#6c5ea4'],
-                                text=priority_counts.values
-                            )
-                            fig_priority.update_traces(texttemplate='%{text}', textposition='outside')
-                            fig_priority.update_layout(
-                                height=450,
-                                xaxis_tickangle=-45,
-                                showlegend=False,
-                                margin=dict(l=40, r=40, t=60, b=80),
-                                yaxis=dict(range=[0, max(priority_counts.values) * 1.15])  # Add headroom
-                            )
-                            st.plotly_chart(fig_priority, use_container_width=True)
-            else:
-                # CE Division column doesn't exist - inform user to update
-                st.info("CE Division column not found. Please run export_to_csv.py to update the data with CE Division information.")
+                st.info("No CE Division data available")
+        else:
+            st.info("CE Division column not found in data")
         
         # SLA Compliance Trending
         st.markdown("### 📊 SLA Compliance Trends")
