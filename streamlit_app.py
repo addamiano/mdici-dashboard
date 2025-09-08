@@ -39,7 +39,7 @@ st.markdown("""
 # No custom theme - using Streamlit defaults for best compatibility
 
 # Data loading functions for CSV-based deployment
-@st.cache_data(ttl=60)  # Cache for 1 minute to see updates faster
+@st.cache_data(ttl=30)  # Cache for 30 seconds to see updates faster
 def load_project_data():
     """Load project data from CSV file"""
     try:
@@ -880,10 +880,10 @@ def main():
         # Additional Charts - Native Plotly Implementation
         st.markdown("### 📊 Additional Project Insights")
         
-        # Using single column layout for better visibility
-        chart_col1, chart_col2, chart_col3 = st.columns([1, 3, 1])
+        # Project State Distribution Chart - centered with 60% width
+        state_col1, state_col2, state_col3 = st.columns([1, 3, 1])
         
-        with chart_col2:
+        with state_col2:
             st.markdown("#### Project State Distribution")
             # Filter for active project states, applying same transformations as SQL
             # Firewall maps to Design, Security maps to Complete (but we exclude Complete)
@@ -935,9 +935,9 @@ def main():
             else:
                 st.info("No active project state data available")
         
-        # CE Division Chart - separate row for better visibility
-        col1, col2, col3 = st.columns([1, 3, 1])
-        with col2:
+        # CE Division Chart - separate row for better visibility  
+        ce_col1, ce_col2, ce_col3 = st.columns([1, 3, 1])
+        with ce_col2:
             st.markdown("#### Projects by CE Division")
             # Filter for non-complete, non-cancelled projects
             ce_df = df.copy()
@@ -970,11 +970,19 @@ def main():
                     )
                     fig_ce.update_traces(texttemplate='%{text}', textposition='outside')
                     fig_ce.update_layout(
-                        height=450,
+                        height=500,  # Increased height
                         xaxis_tickangle=-45,
                         showlegend=False,
-                        margin=dict(l=40, r=40, t=60, b=80),
-                        yaxis=dict(range=[0, max(ce_counts.values) * 1.15])  # Add headroom for labels
+                        margin=dict(l=60, r=60, t=80, b=100),  # More generous margins
+                        yaxis=dict(
+                            range=[0, max(ce_counts.values) * 1.25],  # More headroom
+                            title="Number of Projects"
+                        ),
+                        xaxis=dict(title="CE Division"),
+                        title=dict(
+                            x=0.5,  # Center the title
+                            font=dict(size=16)
+                        )
                     )
                     st.plotly_chart(fig_ce, use_container_width=True)
                 else:
