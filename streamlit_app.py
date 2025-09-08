@@ -930,14 +930,17 @@ def main():
         # MODULAR SECTION: Engineer Performance Over Time (3-year rolling)
         # This section can be easily removed by deleting/commenting from here to END MODULAR SECTION
         st.markdown("---")
-        with st.expander("👥 Engineer Performance Over Time (3-Year Rolling)", expanded=False):
+        # Calculate date range for display
+        from datetime import datetime, timedelta
+        three_years_ago = datetime.now() - timedelta(days=365*3)
+        date_range = f"{three_years_ago.strftime('%Y-%m-%d')} to {datetime.now().strftime('%Y-%m-%d')}"
+        
+        with st.expander(f"👥 Engineer Performance Over Time (3-Year) {date_range}", expanded=False):
             st.markdown("### Historical Engineer Performance Analysis")
             st.caption("Shows ACTUAL DE performance (Kick-Off to Testing Info Sent) - Excludes Enterprise and No Resource")
             
             # Use main dataset for complete engineer data
             # Filter for last 3 years and completed projects
-            from datetime import datetime, timedelta
-            three_years_ago = datetime.now() - timedelta(days=365*3)
             
             # Convert dates
             df_analysis = df.copy()
@@ -1032,7 +1035,8 @@ def main():
                         fig_eng_vol.update_layout(
                             height=400,
                             yaxis_title="Avg Days to DE Completion",
-                            xaxis_title="Projects Completed"
+                            xaxis_title="Projects Completed",
+                            yaxis=dict(range=[0, 40])  # Set Y-axis max to 40
                         )
                         st.plotly_chart(fig_eng_vol, use_container_width=True)
                     
