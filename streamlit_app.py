@@ -898,7 +898,7 @@ def main():
             fig_state = px.pie(
                 values=state_counts.values,
                 names=state_counts.index,
-                title=f"Active Projects by State ({len(active_states)} total)",
+                title=f"Active Projects by Project State ({len(active_states)} total)",
                 color=state_counts.index,
                 color_discrete_map=colors
             )
@@ -1084,15 +1084,19 @@ def main():
                         'Defect ID': 'count'
                     }).reset_index()
                     
-                    engineer_metrics.columns = ['Design Engineer', 'Avg Days to DE Completion', 'Avg Days to Project Completion', 'Projects Completed']
+                    engineer_metrics.columns = ['Design Engineer', 'Avg Days to DE Completion', 'Avg Days to Project Completion', 'Total Projects Completed']
                     
-                    # Calculate SLA compliance rate per engineer (21 days to DE Completion)
-                    sla_compliance = perf_3yr.groupby('Design Engineer').apply(
-                        lambda x: (len(x[x['Days_to_DE_Completion'] <= 21]) / len(x) * 100) if len(x) > 0 else 0
-                    ).reset_index(name='SLA Compliance %')
+                    # Calculate SLA compliance metrics per engineer (21 days to DE Completion)
+                    sla_metrics = perf_3yr.groupby('Design Engineer').apply(
+                        lambda x: pd.Series({
+                            'Designs completed <= 21 days': len(x[x['Days_to_DE_Completion'] <= 21]),
+                            'Designs completed > 21 days': len(x[x['Days_to_DE_Completion'] > 21]),
+                            'SLA Compliance %': (len(x[x['Days_to_DE_Completion'] <= 21]) / len(x) * 100) if len(x) > 0 else 0
+                        })
+                    ).reset_index()
                     
                     # Merge metrics
-                    engineer_metrics = pd.merge(engineer_metrics, sla_compliance, on='Design Engineer')
+                    engineer_metrics = pd.merge(engineer_metrics, sla_metrics, on='Design Engineer')
                     
                     # Sort by SLA compliance
                     engineer_metrics = engineer_metrics.sort_values('SLA Compliance %', ascending=False)
@@ -1123,7 +1127,7 @@ def main():
                         # Scatter plot of volume vs performance
                         fig_eng_vol = px.scatter(
                             engineer_metrics,
-                            x='Projects Completed',
+                            x='Total Projects Completed',
                             y='Avg Days to DE Completion',
                             size='Circle_Size',
                             color='SLA Compliance %',
@@ -1132,11 +1136,18 @@ def main():
                             color_continuous_scale='RdYlGn',
                             range_color=[0, 100]
                         )
+                        # Customize hover template
+                        fig_eng_vol.update_traces(
+                            hovertemplate="<b>%{customdata[0]}</b><br>" +
+                                        "Projects Completed: %{x}<br>" +
+                                        "Avg days to DE completion: %{y:.2f}<br>" +
+                                        "<extra></extra>"
+                        )
                         fig_eng_vol.add_hline(y=21, line_dash="dash", line_color="red", annotation_text="21-Day SLA")
                         fig_eng_vol.update_layout(
                             height=400,
                             yaxis_title="Avg Days to DE Completion",
-                            xaxis_title="Projects Completed",
+                            xaxis_title="Total Projects Completed",
                             yaxis=dict(range=[0, 40])  # Set Y-axis max to 40
                         )
                         st.plotly_chart(fig_eng_vol, use_container_width=True)
@@ -1144,19 +1155,32 @@ def main():
                     # Detailed table
                     st.markdown("#### Detailed Engineer Metrics (3-Year Rolling)")
                     #st.caption("Based on ACTUAL completion dates (Testing Info Sent) - Excludes Enterprise service area and No Resource assignments")
+                    
+                    # Reorder columns as requested and exclude Circle_Size
+                    display_columns = [
+                        'Design Engineer',
+                        'Avg Days to DE Completion', 
+                        'Designs completed <= 21 days',
+                        'Designs completed > 21 days',
+                        'Total Projects Completed',
+                        'SLA Compliance %'
+                    ]
+                    
                     st.dataframe(
-                        engineer_metrics.round(1),
+                        engineer_metrics[display_columns].round(1),
                         use_container_width=True,
                         hide_index=True,
                         column_config={
-                            "Avg Days to DE Completion": st.column_config.NumberColumn(format="%.1f days"),
-                            "Avg Days to Project Completion": st.column_config.NumberColumn(format="%.1f days"),
+                            "Avg Days to DE Completion": st.column_config.NumberColumn(format="%.2f"),
+                            "Designs completed <= 21 days": st.column_config.NumberColumn(format="%d"),
+                            "Designs completed > 21 days": st.column_config.NumberColumn(format="%d"),
+                            "Total Projects Completed": st.column_config.NumberColumn(format="%d"),
                             "SLA Compliance %": st.column_config.ProgressColumn(
                                 min_value=0,
                                 max_value=100,
-                                format="%.1f%%"
-                            ),
-                            "Projects Completed": st.column_config.NumberColumn(format="%d")
+                                format="%.1f%%",
+                                help="Percentage of projects that have had their design completed in 21 or less days"
+                            )
                         }
                     )
                 else:
