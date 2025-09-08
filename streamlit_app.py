@@ -17,6 +17,24 @@ st.set_page_config(
     layout="wide"
 )
 
+# Custom CSS to reduce padding around info bars
+st.markdown("""
+<style>
+    .stAlert {
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.5rem !important;
+        margin-top: 0.25rem !important;
+        margin-bottom: 0.25rem !important;
+    }
+    .stSuccess {
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.5rem !important;
+        margin-top: 0.25rem !important;
+        margin-bottom: 0.25rem !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # No custom theme - using Streamlit defaults for best compatibility
 
 # Data loading functions for CSV-based deployment
@@ -542,16 +560,18 @@ def main():
         display_columns = default_columns + additional_cols
         display_columns = [col for col in display_columns if col in filtered_df.columns]
         
-        # Sort options
-        col1, col2 = st.columns(2)
+        # Sort options with Total Projects
+        col1, col2, col3 = st.columns([2, 2, 1])
         with col1:
+            sort_options = [col for col in display_columns if col in filtered_df.columns]
+            default_index = sort_options.index('Defect ID') if 'Defect ID' in sort_options else 0
             sort_column = st.selectbox(
                 "Sort by:",
-                options=[col for col in display_columns if col in filtered_df.columns],
-                index=5 if 'Days Since Kickoff' in display_columns else 0
+                options=sort_options,
+                index=default_index
             )
         with col2:
-            sort_ascending = st.radio("Order:", ["Newest First", "Oldest First"], horizontal=True)
+            sort_ascending = st.radio("Order:", ["Newest First", "Oldest First"], horizontal=True, index=1)
         
         # Sort the dataframe
         sorted_df = filtered_df.sort_values(
@@ -559,6 +579,10 @@ def main():
             ascending=(sort_ascending == "Oldest First"),
             na_position='last'
         )
+        
+        # Show total projects in the third column
+        with col3:
+            st.metric("Total Projects", len(sorted_df))
         
         # Display the main table with selection capability
         selected_rows = st.dataframe(
@@ -649,23 +673,6 @@ def main():
                 st.markdown(f"```\n{selected_project['Comments']}\n```")
         else:
             st.info("👆 Click on any row in the table above to see detailed project information")
-        
-        # Download and summary section
-        st.markdown("---")
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            csv = sorted_df[display_columns].to_csv(index=False)
-            st.download_button(
-                label="📥 Download as CSV",
-                data=csv,
-                file_name=f"MDICI_Projects_{date.today()}.csv",
-                mime="text/csv",
-                use_container_width=True
-            )
-        
-        with col2:
-            st.metric("Total Projects", len(sorted_df))
     
     with tab2:
         st.subheader("Projects by Design Engineer")
