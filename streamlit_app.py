@@ -39,7 +39,8 @@ st.markdown("""
 # No custom theme - using Streamlit defaults for best compatibility
 
 # Data loading functions for CSV-based deployment
-@st.cache_data(ttl=30)  # Cache for 30 seconds to see updates faster
+# Temporarily disable caching to see immediate changes
+# @st.cache_data(ttl=30)
 def load_project_data():
     """Load project data from CSV file"""
     try:
@@ -73,7 +74,7 @@ def load_project_data():
         st.error(f"Error loading data: {str(e)}")
         return pd.DataFrame()
 
-@st.cache_data(ttl=60)  # Cache for 1 minute
+# @st.cache_data(ttl=60)
 def load_completed_performance():
     """Load performance metrics from CSV"""
     try:
@@ -827,7 +828,7 @@ def main():
                 st.markdown(f"```\n{project['Comments']}\n```")
     
     with tab4:
-        st.subheader("📈 Executive Summary")
+        st.subheader("📈 Executive Summary - Updated Layout v2.0")
         
         # Get active projects data
         active_df = df[
