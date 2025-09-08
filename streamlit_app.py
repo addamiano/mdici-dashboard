@@ -937,7 +937,7 @@ def main():
         
         with st.expander(f"👥 Engineer Performance Over Time (3-Year) {date_range}", expanded=False):
             st.markdown("### Historical Engineer Performance Analysis")
-            st.caption("Shows ACTUAL DE performance (Kick-Off to Testing Info Sent) - Excludes Enterprise and No Resource")
+            #st.caption("Shows ACTUAL DE performance (Kick-Off to Testing Info Sent) - Excludes Enterprise and No Resource")
             
             # Use main dataset for complete engineer data
             # Filter for last 3 years and completed projects
@@ -951,7 +951,7 @@ def main():
             if 'DE Completion Date' in df_analysis.columns:
                 df_analysis['DE Completion Date'] = pd.to_datetime(df_analysis['DE Completion Date'], errors='coerce')
                 actual_completion_col = 'DE Completion Date'
-                st.caption("Using ACTUAL DE Completion Date from database - Excludes Enterprise and No Resource")
+                #st.caption("Using ACTUAL DE Completion Date from database - Excludes Enterprise and No Resource")
             else:
                 df_analysis['Testing Info Sent'] = pd.to_datetime(df_analysis['Testing Info Sent'], errors='coerce')
                 actual_completion_col = 'Testing Info Sent'
@@ -1051,7 +1051,7 @@ def main():
                     
                     # Detailed table
                     st.markdown("#### Detailed Engineer Metrics (3-Year Rolling)")
-                    st.caption("Based on ACTUAL completion dates (Testing Info Sent) - Excludes Enterprise service area and No Resource assignments")
+                    #st.caption("Based on ACTUAL completion dates (Testing Info Sent) - Excludes Enterprise service area and No Resource assignments")
                     st.dataframe(
                         engineer_metrics.round(1),
                         use_container_width=True,
@@ -1084,4 +1084,5 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
