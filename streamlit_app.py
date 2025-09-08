@@ -18,7 +18,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS to reduce padding around info bars
+# Custom CSS to reduce padding around info bars and make tabs more visible
 st.markdown("""
 <style>
     .stAlert {
@@ -32,6 +32,15 @@ st.markdown("""
         padding-bottom: 0.5rem !important;
         margin-top: 0.25rem !important;
         margin-bottom: 0.25rem !important;
+    }
+    /* Make tab text larger and more prominent */
+    .stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {
+        font-size: 18px !important;
+        font-weight: 600 !important;
+    }
+    .stTabs [data-baseweb="tab-list"] button {
+        height: 50px !important;
+        padding: 10px 20px !important;
     }
 </style>
 """, unsafe_allow_html=True)
