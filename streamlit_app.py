@@ -833,9 +833,9 @@ def main():
         
         with exec_col1:
             st.markdown("### 🏢 Active Projects by Service Area")
-            # Get active projects only (excluding Complete/Cancelled and Enterprise placeholder)
+            # Get active projects only (Design, Firewall, Testing - excluding Enterprise placeholder)
             active_df = df[
-                (~df['Project State'].isin(['Complete', 'Cancelled'])) &
+                (df['Project State'].isin(['Design', 'Firewall', 'Testing'])) &
                 (df['Service Area'] != 'Enterprise')
             ]
             service_area_counts = active_df['Service Area'].value_counts()
@@ -907,7 +907,7 @@ def main():
         with bottleneck_col1:
             # Projects stuck in Firewall
             firewall_df = active_df[active_df['Project State'] == 'Firewall']
-            st.metric("🔥 Stuck in Firewall", len(firewall_df), 
+            st.metric("🔥 Waiting for Firewall", len(firewall_df), 
                      help="Projects waiting for firewall configuration")
         
         with bottleneck_col2:
