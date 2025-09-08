@@ -960,6 +960,7 @@ def main():
                 (df_analysis['Project State'].isin(['Complete', 'Security'])) &
                 (df_analysis['Service Area'] != 'Enterprise') &
                 (df_analysis['Design Engineer'] != 'No Resource') &
+                (df_analysis['Design Engineer'] != 'Not Applicable') &
                 (df_analysis['Design Engineer'].notna())
             ]
             
