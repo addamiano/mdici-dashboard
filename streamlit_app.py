@@ -39,7 +39,7 @@ st.markdown("""
 # No custom theme - using Streamlit defaults for best compatibility
 
 # Data loading functions for CSV-based deployment
-@st.cache_data(ttl=300)  # Cache for 5 minutes
+@st.cache_data(ttl=60)  # Cache for 1 minute to see updates faster
 def load_project_data():
     """Load project data from CSV file"""
     try:
@@ -73,7 +73,7 @@ def load_project_data():
         st.error(f"Error loading data: {str(e)}")
         return pd.DataFrame()
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=60)  # Cache for 1 minute
 def load_completed_performance():
     """Load performance metrics from CSV"""
     try:
@@ -849,12 +849,12 @@ def main():
                 orientation='h',
                 title=f"Total Active Projects by Service Area ({len(active_df)} total)",
                 labels={'x': 'Number of Projects', 'y': 'Service Area'},
-                color=service_area_counts.values,
-                color_continuous_scale='Blues',
+                color_discrete_sequence=['#4472C4'],  # Single color instead of scale
                 text=service_area_counts.values
             )
             fig_area.update_traces(texttemplate='%{text}', textposition='outside')
             fig_area.update_layout(height=400, showlegend=False)
+            fig_area.update_coloraxes(showscale=False)  # Hide color scale
             st.plotly_chart(fig_area, use_container_width=True)
         
         with exec_col2:
@@ -866,10 +866,13 @@ def main():
                 values=service_line_counts.values,
                 names=service_line_counts.index,
                 title=f"Distribution by Service Line ({len(active_df)} total)",
-                hole=0.4
+                hole=0.3
             )
-            fig_line.update_traces(textposition='inside', textinfo='percent+label')
-            fig_line.update_layout(height=400)
+            fig_line.update_traces(textposition='inside', textinfo='percent+label', textfont_size=14)
+            fig_line.update_layout(
+                height=400,
+                margin=dict(l=20, r=20, t=40, b=20)
+            )
             st.plotly_chart(fig_line, use_container_width=True)
         
         # Additional Charts - Native Plotly Implementation
@@ -912,9 +915,19 @@ def main():
                 fig_state.update_traces(
                     textposition='inside',
                     textinfo='value+label',
-                    textfont_size=12
+                    textfont_size=14
                 )
-                fig_state.update_layout(height=400)
+                fig_state.update_layout(
+                    height=400,
+                    margin=dict(l=20, r=20, t=40, b=20),
+                    legend=dict(
+                        orientation="v",
+                        yanchor="middle",
+                        y=0.5,
+                        xanchor="left",
+                        x=1.02
+                    )
+                )
                 st.plotly_chart(fig_state, use_container_width=True)
             else:
                 st.info("No active project state data available")
@@ -954,58 +967,38 @@ def main():
                     fig_ce.update_layout(
                         height=400,
                         xaxis_tickangle=-45,
-                        showlegend=False
+                        showlegend=False,
+                        margin=dict(l=20, r=20, t=40, b=40)
                     )
                     st.plotly_chart(fig_ce, use_container_width=True)
                 else:
-                    # No CE Division data, show all active projects by Priority instead
+                    # Show message that CE Division data is not populated
+                    st.info("CE Division data is not populated in the database. Showing Priority distribution instead.")
+                    # Show Priority chart as fallback
                     if not ce_active.empty and 'Priority' in ce_active.columns:
-                        priority_counts = ce_active['Priority'].value_counts().sort_index()
-                        
-                        fig_priority = px.bar(
-                            x=priority_counts.index,
-                            y=priority_counts.values,
-                            title=f"Active Projects by Priority ({len(ce_active)} total)",
-                            labels={'x': 'Priority', 'y': 'Number of Projects'},
-                            color_discrete_sequence=['#6c5ea4'],
-                            text=priority_counts.values
-                        )
-                        fig_priority.update_traces(texttemplate='%{text}', textposition='outside')
-                        fig_priority.update_layout(
-                            height=400,
-                            xaxis_tickangle=-45,
-                            showlegend=False
-                        )
-                        st.plotly_chart(fig_priority, use_container_width=True)
-                    else:
-                        st.info("No CE Division data available. Please ensure CE Division is populated in the database.")
+                        priority_active = ce_active[ce_active['Priority'].notna()]
+                        if not priority_active.empty:
+                            priority_counts = priority_active['Priority'].value_counts().sort_index()
+                            
+                            fig_priority = px.bar(
+                                x=priority_counts.index,
+                                y=priority_counts.values,
+                                title=f"Active Projects by Priority ({len(priority_active)} total)",
+                                labels={'x': 'Priority', 'y': 'Number of Projects'},
+                                color_discrete_sequence=['#6c5ea4'],
+                                text=priority_counts.values
+                            )
+                            fig_priority.update_traces(texttemplate='%{text}', textposition='outside')
+                            fig_priority.update_layout(
+                                height=400,
+                                xaxis_tickangle=-45,
+                                showlegend=False,
+                                margin=dict(l=20, r=20, t=40, b=40)
+                            )
+                            st.plotly_chart(fig_priority, use_container_width=True)
             else:
-                # CE Division column doesn't exist - show Priority chart
-                if not ce_active.empty and 'Priority' in ce_active.columns:
-                    priority_active = ce_active[ce_active['Priority'].notna()]
-                    
-                    if not priority_active.empty:
-                        priority_counts = priority_active['Priority'].value_counts().sort_index()
-                        
-                        fig_priority = px.bar(
-                            x=priority_counts.index,
-                            y=priority_counts.values,
-                            title=f"Active Projects by Priority ({len(priority_active)} total)",
-                            labels={'x': 'Priority', 'y': 'Number of Projects'},
-                            color_discrete_sequence=['#6c5ea4'],
-                            text=priority_counts.values
-                        )
-                        fig_priority.update_traces(texttemplate='%{text}', textposition='outside')
-                        fig_priority.update_layout(
-                            height=400,
-                            xaxis_tickangle=-45,
-                            showlegend=False
-                        )
-                        st.plotly_chart(fig_priority, use_container_width=True)
-                    else:
-                        st.info("No priority data available")
-                else:
-                    st.info("CE Division column not found in data. Please run export_to_csv.py to update the data.")
+                # CE Division column doesn't exist - inform user to update
+                st.info("CE Division column not found. Please run export_to_csv.py to update the data with CE Division information.")
         
         # SLA Compliance Trending
         st.markdown("### 📊 SLA Compliance Trends")
