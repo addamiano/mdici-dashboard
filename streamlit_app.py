@@ -965,6 +965,8 @@ def main():
                 (df_analysis['Design Engineer'] != 'No Resource') &
                 (df_analysis['Design Engineer'] != 'Not Applicable') &
                 (df_analysis['Design Engineer'] != 'Anthony Damiano') &
+                (df_analysis['Design Engineer'] != 'Wael Nekho') &
+                (df_analysis['Design Engineer'] != 'Rob Anderson') &
                 (df_analysis['Design Engineer'].notna())
             ]
             
