@@ -1021,12 +1021,15 @@ def main():
                         st.plotly_chart(fig_eng_sla, use_container_width=True)
                     
                     with perf_col2:
+                        # Add a minimum size for visibility (especially for 0% SLA compliance)
+                        engineer_metrics['Circle_Size'] = engineer_metrics['SLA Compliance %'] + 10  # Minimum size of 10
+                        
                         # Scatter plot of volume vs performance
                         fig_eng_vol = px.scatter(
                             engineer_metrics,
                             x='Projects Completed',
                             y='Avg Days to DE Completion',
-                            size='SLA Compliance %',
+                            size='Circle_Size',
                             color='SLA Compliance %',
                             hover_data=['Design Engineer'],
                             title="Volume vs DE Performance (3-Year)",
