@@ -290,11 +290,63 @@ def main():
     
     st.info(f"{export_info}✅ {total_projects:,} total projects ({awaiting_kickoff} awaiting kickoff)", icon="📊")
     
-    # Top Search Section
+    # Performance Metrics from Completed Projects - Enhanced with 6 and 12 month views
+    if not performance_df.empty:
+        st.subheader("📊 Recent Performance Metrics")
+        
+        # Calculate 6 month and 12 month metrics
+        from datetime import datetime, timedelta
+        now = datetime.now()
+        six_months_ago = now - timedelta(days=180)
+        twelve_months_ago = now - timedelta(days=365)
+        
+        # Filter data for different time periods
+        perf_6m = performance_df[performance_df['Export Date'] >= six_months_ago] if 'Export Date' in performance_df.columns else performance_df
+        perf_12m = performance_df[performance_df['Export Date'] >= twelve_months_ago] if 'Export Date' in performance_df.columns else performance_df
+        
+        # 6 month metrics
+        st.markdown("**Last 6 Months:**")
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            avg_to_testing_6m = perf_6m['Days_to_Testing'].mean() if len(perf_6m) > 0 else 0
+            st.metric("Kickoff → Testing Info", f"{avg_to_testing_6m:.1f} days")
+        with col2:
+            avg_to_completion_6m = perf_6m['Days_to_Completion'].mean() if len(perf_6m) > 0 else 0
+            st.metric("Kickoff → Completion", f"{avg_to_completion_6m:.1f} days")
+        with col3:
+            # Calculate Testing Info → Completion (new metric)
+            testing_to_completion_6m = perf_6m['Days_to_Completion'] - perf_6m['Days_to_Testing'] 
+            avg_testing_to_completion_6m = testing_to_completion_6m.dropna().mean() if len(perf_6m) > 0 else 0
+            st.metric("Testing Info → Completion", f"{avg_testing_to_completion_6m:.1f} days")
+        with col4:
+            sla_met_6m = len(perf_6m[perf_6m['Days_to_Testing'] <= 21]) if len(perf_6m) > 0 else 0
+            sla_rate_6m = (sla_met_6m / len(perf_6m) * 100) if len(perf_6m) > 0 else 0
+            st.metric("SLA Met Rate (≤21 days)", f"{sla_rate_6m:.1f}%")
+        
+        # 12 month metrics  
+        st.markdown("**Last 12 Months:**")
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            avg_to_testing_12m = perf_12m['Days_to_Testing'].mean() if len(perf_12m) > 0 else 0
+            st.metric("Kickoff → Testing Info", f"{avg_to_testing_12m:.1f} days")
+        with col2:
+            avg_to_completion_12m = perf_12m['Days_to_Completion'].mean() if len(perf_12m) > 0 else 0
+            st.metric("Kickoff → Completion", f"{avg_to_completion_12m:.1f} days")
+        with col3:
+            # Calculate Testing Info → Completion (new metric)
+            testing_to_completion_12m = perf_12m['Days_to_Completion'] - perf_12m['Days_to_Testing']
+            avg_testing_to_completion_12m = testing_to_completion_12m.dropna().mean() if len(perf_12m) > 0 else 0
+            st.metric("Testing Info → Completion", f"{avg_testing_to_completion_12m:.1f} days")
+        with col4:
+            sla_met_12m = len(perf_12m[perf_12m['Days_to_Testing'] <= 21]) if len(perf_12m) > 0 else 0
+            sla_rate_12m = (sla_met_12m / len(perf_12m) * 100) if len(perf_12m) > 0 else 0
+            st.metric("SLA Met Rate (≤21 days)", f"{sla_rate_12m:.1f}%")
+    
+    # Search & Filter section - moved above data grid for better UX
     st.markdown("---")
     st.subheader("🔍 Search & Filter")
     
-    # Create columns for search inputs
+    # Row 1: Main search inputs
     search_col1, search_col2, search_col3, search_col4 = st.columns(4)
     
     with search_col1:
@@ -330,78 +382,58 @@ def main():
             st.session_state.selected_states = ['Design', 'Firewall']
             st.rerun()
     
-    # Sidebar filters
-    with st.sidebar:
-        st.header("Filters")
-        
-        # Project State filter - now includes all states for historical view
-        st.subheader("Project State")
-        project_states = sorted(df['Project State'].unique())
-        
-        # Separate active vs completed for easier selection
-        active_states = [s for s in project_states if s in ['Design', 'Firewall', 'Testing', 'Intake', 'Hold']]
-        completed_states = [s for s in project_states if s in ['Complete', 'Security']]
-        
-        # Quick filter buttons
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            if st.button("🎯 Active Only", use_container_width=True):
-                st.session_state.selected_states = active_states
-        with col2:
-            if st.button("⏳ Awaiting Kickoff", use_container_width=True, help="Intake projects awaiting kickoff info"):
-                st.session_state.selected_states = ['Intake']
-                st.session_state.date_filter = "Awaiting kickoff (1900-01-01)"
-        with col3:
-            if st.button("📋 All Projects", use_container_width=True):
-                st.session_state.selected_states = project_states
-                st.session_state.show_placeholders = False
-        
-        # Initialize session state if not exists
-        if 'selected_states' not in st.session_state:
-            st.session_state.selected_states = ['Design', 'Firewall']  # Default to active Design/Firewall
-        
-        selected_states = st.multiselect(
-            "Select Project States",
-            options=project_states,
-            default=st.session_state.selected_states,
-            help="💡 Use quick buttons above or manually select states"
-        )
-        
-        # Update session state
-        if selected_states:
-            st.session_state.selected_states = selected_states
-        
-        # Design Engineer filter
-        st.subheader("Design Engineer")
-        engineers = ['All'] + sorted(df['Design Engineer'].dropna().unique().tolist())
-        selected_engineer = st.selectbox("Select Engineer", engineers)
-        
-        # Status filter
-        st.subheader("SLA Status")
-        status_options = df['Status'].unique().tolist()
-        selected_status = st.multiselect(
-            "Select Status",
-            status_options,
-            default=status_options
-        )
-        
-        # Additional Filters
-        st.subheader("🏥 Additional Filters")
-        
-        # Facility filter
+    # Row 2: Additional filters
+    filter_col1, filter_col2, filter_col3, filter_col4 = st.columns(4)
+    
+    with filter_col1:
         facilities = ['All'] + sorted(df['Facility'].dropna().unique().tolist())
-        selected_facility = st.selectbox("Select Facility", facilities)
-        
-        # Service Line filter
+        selected_facility = st.selectbox("Facility:", facilities)
+    
+    with filter_col2:
         service_lines = ['All'] + sorted(df['Service Line'].dropna().unique().tolist())
-        selected_service_line = st.selectbox("Select Service Line", service_lines)
-        
-        # ASA Assigned filter
+        selected_service_line = st.selectbox("Service Line:", service_lines)
+    
+    with filter_col3:
         asa_options = ['All'] + sorted([
             asa.strip() for asa_list in df['ASA Assigned'].dropna().unique() 
             for asa in str(asa_list).split('/') if asa.strip() and asa.strip() != 'nan'
         ])
-        selected_asa = st.selectbox("Select ASA Assigned", asa_options)
+        selected_asa = st.selectbox("ASA Assigned:", asa_options)
+    
+    # Row 3: Project state and other essential filters
+    state_col1, state_col2, state_col3, state_col4 = st.columns(4)
+    
+    with state_col1:
+        # Project State filter
+        project_states = sorted(df['Project State'].unique())
+        if 'selected_states' not in st.session_state:
+            st.session_state.selected_states = ['Design', 'Firewall']
+        
+        selected_states = st.multiselect(
+            "Project States:",
+            options=project_states,
+            default=st.session_state.selected_states
+        )
+        if selected_states:
+            st.session_state.selected_states = selected_states
+    
+    with state_col2:
+        engineers = ['All'] + sorted(df['Design Engineer'].dropna().unique().tolist())
+        selected_engineer = st.selectbox("Design Engineer:", engineers)
+    
+    with state_col3:
+        status_options = df['Status'].unique().tolist()
+        selected_status = st.multiselect(
+            "SLA Status:",
+            status_options,
+            default=status_options
+        )
+    
+    with state_col4:
+        # Quick filter buttons
+        if st.button("🎯 Active Only", help="Design, Firewall, Testing states"):
+            st.session_state.selected_states = ['Design', 'Firewall', 'Testing']
+            st.rerun()
     
     # Apply filters
     filtered_df = df.copy()
@@ -492,27 +524,6 @@ def main():
         urgent = len(design_projects[(design_projects['Days Until SLA'] <= 3) & 
                                    (design_projects['Days Until SLA'].notna())])
         st.metric("Urgent Design (<3 days)", urgent, help="Design projects near SLA deadline")
-    
-    # Performance Metrics from Completed Projects
-    if not performance_df.empty:
-        st.subheader("📊 Recent Performance Metrics (Last 6 months)")
-        perf_col1, perf_col2, perf_col3 = st.columns(3)
-        
-        with perf_col1:
-            avg_to_testing = performance_df['Days_to_Testing'].mean()
-            st.metric("Avg Days: Kickoff → Testing Info", f"{avg_to_testing:.1f}", 
-                     help="Average time from kickoff to sending testing info")
-        
-        with perf_col2:
-            avg_to_completion = performance_df['Days_to_Completion'].mean()
-            st.metric("Avg Days: Kickoff → Completion", f"{avg_to_completion:.1f}",
-                     help="Average total project time")
-        
-        with perf_col3:
-            sla_met = len(performance_df[performance_df['Days_to_Testing'] <= 21])
-            sla_rate = (sla_met / len(performance_df) * 100) if len(performance_df) > 0 else 0
-            st.metric("SLA Met Rate (≤21 days)", f"{sla_rate:.1f}%",
-                     help="Percentage meeting 21-day SLA")
     
     # Tabs for different views
     tab1, tab2, tab3 = st.tabs(["📊 Active Projects", "👥 By Engineer", "📝 Detailed View"])
