@@ -966,6 +966,8 @@ def main():
                 (df_analysis['Design Engineer'] != 'Not Applicable') &
                 (df_analysis['Design Engineer'] != 'Anthony Damiano') &
                 (df_analysis['Design Engineer'] != 'Wael Nekho') &
+                (df_analysis['Design Engineer'] != 'Nancy Kupihea') &
+                (df_analysis['Design Engineer'] != 'Chris Coleman') &
                 (df_analysis['Design Engineer'] != 'Rob Anderson') &
                 (df_analysis['Design Engineer'].notna())
             ]
@@ -1078,4 +1080,5 @@ def main():
         st.caption("Cloud version - updates when new CSV files are uploaded")
 
 if __name__ == "__main__":
+
     main()
