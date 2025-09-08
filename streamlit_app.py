@@ -300,9 +300,15 @@ def main():
         six_months_ago = now - timedelta(days=180)
         twelve_months_ago = now - timedelta(days=365)
         
-        # Filter data for different time periods
-        perf_6m = performance_df[performance_df['Export Date'] >= six_months_ago] if 'Export Date' in performance_df.columns else performance_df
-        perf_12m = performance_df[performance_df['Export Date'] >= twelve_months_ago] if 'Export Date' in performance_df.columns else performance_df
+        # Filter data for different time periods using Actual Go-Live Date (when projects completed)
+        if 'Actual Go-Live Date' in performance_df.columns:
+            performance_df['Actual Go-Live Date'] = pd.to_datetime(performance_df['Actual Go-Live Date'], errors='coerce')
+            perf_6m = performance_df[performance_df['Actual Go-Live Date'] >= six_months_ago]
+            perf_12m = performance_df[performance_df['Actual Go-Live Date'] >= twelve_months_ago]
+        else:
+            # Fallback to all data if no date column available
+            perf_6m = performance_df
+            perf_12m = performance_df
         
         # 6 month metrics
         st.markdown("**Last 6 Months:**")
@@ -422,18 +428,25 @@ def main():
         selected_engineer = st.selectbox("Design Engineer:", engineers)
     
     with state_col3:
-        status_options = df['Status'].unique().tolist()
-        selected_status = st.multiselect(
-            "SLA Status:",
-            status_options,
-            default=status_options
-        )
+        # Quick filter buttons
+        button_col1, button_col2, button_col3 = st.columns(3)
+        with button_col1:
+            if st.button("🎯 Active Only", help="Design, Firewall, Testing states"):
+                st.session_state.selected_states = ['Design', 'Firewall', 'Testing']
+                st.rerun()
+        with button_col2:
+            if st.button("⏳ Intake Only", help="Projects awaiting kickoff"):
+                st.session_state.selected_states = ['Intake']
+                st.rerun()
+        with button_col3:
+            if st.button("📋 All Projects", help="Show all project states"):
+                project_states = sorted(df['Project State'].unique())
+                st.session_state.selected_states = project_states
+                st.rerun()
     
     with state_col4:
-        # Quick filter buttons
-        if st.button("🎯 Active Only", help="Design, Firewall, Testing states"):
-            st.session_state.selected_states = ['Design', 'Firewall', 'Testing']
-            st.rerun()
+        # Keep this empty or add something else if needed
+        st.write("")  # Placeholder
     
     # Apply filters
     filtered_df = df.copy()
@@ -443,9 +456,6 @@ def main():
     
     if selected_engineer != 'All':
         filtered_df = filtered_df[filtered_df['Design Engineer'] == selected_engineer]
-    
-    if selected_status:
-        filtered_df = filtered_df[filtered_df['Status'].isin(selected_status)]
     
     
     # Apply all filters
@@ -479,8 +489,6 @@ def main():
         active_filters.append(f"States: {len(selected_states)}")
     if selected_engineer != 'All':
         active_filters.append(f"Engineer: {selected_engineer}")
-    if selected_status != df['Status'].unique().tolist():
-        active_filters.append(f"Status: {len(selected_status)}")
     if defect_search:
         active_filters.append(f"ID: {defect_search}")
     if selected_facility != 'All':
