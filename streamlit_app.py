@@ -872,26 +872,89 @@ def main():
             fig_line.update_layout(height=400)
             st.plotly_chart(fig_line, use_container_width=True)
         
-        # Additional Charts from SQL Scripts
+        # Additional Charts - Native Plotly Implementation
         st.markdown("### 📊 Additional Project Insights")
         
         chart_col1, chart_col2 = st.columns(2)
         
         with chart_col1:
-            # Display Project State Distribution chart if it exists
-            if os.path.exists('02_page_2_of_FY_Data.png'):
-                st.markdown("#### Project State Distribution")
-                st.image('02_page_2_of_FY_Data.png', use_container_width=True)
+            st.markdown("#### Project State Distribution")
+            # Filter for active project states, applying same transformations as SQL
+            # Firewall maps to Design, Security maps to Complete (but we exclude Complete)
+            state_df = df.copy()
+            # Map Firewall to Design
+            state_df['Project State'] = state_df['Project State'].replace('Firewall', 'Design')
+            # Filter for active states only (excluding Complete, Cancelled, and mapped Security)
+            active_states = state_df[
+                (state_df['Project State'].isin(['Testing', 'Design', 'Intake', 'Hold'])) &
+                (~state_df['Project State'].isin(['Complete', 'Cancelled', 'Security']))
+            ]
+            
+            if not active_states.empty:
+                state_counts = active_states['Project State'].value_counts()
+                
+                # Define colors matching the original chart
+                colors = {
+                    'Design': '#6c5ea4',  
+                    'Hold': '#1c7f40',    
+                    'Intake': '#00ad8d',  
+                    'Testing': '#c15289'
+                }
+                
+                # Create pie chart
+                fig_state = px.pie(
+                    values=state_counts.values,
+                    names=state_counts.index,
+                    title=f"Active Projects by State ({len(active_states)} total)",
+                    color=state_counts.index,
+                    color_discrete_map=colors
+                )
+                fig_state.update_traces(
+                    textposition='inside',
+                    textinfo='value+label',
+                    textfont_size=12
+                )
+                fig_state.update_layout(height=400)
+                st.plotly_chart(fig_state, use_container_width=True)
             else:
-                st.info("Project State Distribution chart not available. Run 02_SQL_current_active_projects.py to generate.")
+                st.info("No active project state data available")
         
         with chart_col2:
-            # Display CE Division chart if it exists
-            if os.path.exists('04_page_4_of_FY_Data.png'):
-                st.markdown("#### Projects by CE Division")
-                st.image('04_page_4_of_FY_Data.png', use_container_width=True)
+            st.markdown("#### Projects by CE Division")
+            # Filter for non-complete, non-cancelled projects
+            ce_df = df.copy()
+            # Map states: Firewall->Design, Security->Complete
+            ce_df['Project State'] = ce_df['Project State'].replace({
+                'Firewall': 'Design',
+                'Security': 'Complete'
+            })
+            # Exclude Complete and Cancelled
+            ce_active = ce_df[
+                (~ce_df['Project State'].isin(['Complete', 'Cancelled'])) &
+                (ce_df['CE Division'].notna())
+            ]
+            
+            if not ce_active.empty:
+                ce_counts = ce_active['CE Division'].value_counts().sort_index()
+                
+                # Create bar chart
+                fig_ce = px.bar(
+                    x=ce_counts.index,
+                    y=ce_counts.values,
+                    title=f"Active Projects by CE Division ({len(ce_active)} total)",
+                    labels={'x': 'CE Division', 'y': 'Number of Projects'},
+                    color_discrete_sequence=['#6c5ea4'],  # Match the purple color
+                    text=ce_counts.values
+                )
+                fig_ce.update_traces(texttemplate='%{text}', textposition='outside')
+                fig_ce.update_layout(
+                    height=400,
+                    xaxis_tickangle=-45,
+                    showlegend=False
+                )
+                st.plotly_chart(fig_ce, use_container_width=True)
             else:
-                st.info("CE Division chart not available. Run 04_SQL_current_active_by_ce_division.py to generate.")
+                st.info("No CE Division data available")
         
         # SLA Compliance Trending
         st.markdown("### 📊 SLA Compliance Trends")
