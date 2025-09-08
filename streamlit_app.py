@@ -928,30 +928,51 @@ def main():
         st.markdown("---")
         with st.expander("👥 Engineer Performance Over Time (3-Year Rolling)", expanded=False):
             st.markdown("### Historical Engineer Performance Analysis")
-            st.caption("Shows performance metrics for the last 3 years of completed projects")
+            st.caption("Shows DE SLA performance (21 days from Kick-Off to Expected DE Completion) - Excludes Enterprise and No Resource")
             
-            if not performance_df.empty:
-                # Filter for last 3 years
-                from datetime import datetime, timedelta
-                three_years_ago = datetime.now() - timedelta(days=365*3)
+            # Use main dataset for complete engineer data
+            # Filter for last 3 years and completed projects
+            from datetime import datetime, timedelta
+            three_years_ago = datetime.now() - timedelta(days=365*3)
+            
+            # Convert dates
+            df_analysis = df.copy()
+            df_analysis['Actual Go-Live Date'] = pd.to_datetime(df_analysis['Actual Go-Live Date'], errors='coerce')
+            df_analysis['Kick-Off Date'] = pd.to_datetime(df_analysis['Kick-Off Date'], errors='coerce')
+            df_analysis['Expected DE Completion'] = pd.to_datetime(df_analysis['Expected DE Completion'], errors='coerce')
+            
+            # Filter: Last 3 years, completed projects, exclude Enterprise and No Resource
+            perf_3yr = df_analysis[
+                (df_analysis['Actual Go-Live Date'] >= three_years_ago) &
+                (df_analysis['Project State'].isin(['Complete', 'Security'])) &
+                (df_analysis['Service Area'] != 'Enterprise') &
+                (df_analysis['Design Engineer'] != 'No Resource') &
+                (df_analysis['Design Engineer'].notna())
+            ]
+            
+            if len(perf_3yr) > 0:
+                # Calculate Days from Kick-Off to Expected DE Completion
+                perf_3yr['Days_to_DE_Completion'] = (perf_3yr['Expected DE Completion'] - perf_3yr['Kick-Off Date']).dt.days
                 
-                # Convert date and filter
-                performance_df['Actual Go-Live Date'] = pd.to_datetime(performance_df['Actual Go-Live Date'], errors='coerce')
-                perf_3yr = performance_df[performance_df['Actual Go-Live Date'] >= three_years_ago]
+                # Filter out invalid dates (1900 placeholder dates)
+                perf_3yr = perf_3yr[
+                    (perf_3yr['Kick-Off Date'] > '1950-01-01') &
+                    (perf_3yr['Expected DE Completion'] > '1950-01-01')
+                ]
                 
                 if len(perf_3yr) > 0:
                     # Calculate metrics by engineer
                     engineer_metrics = perf_3yr.groupby('Design Engineer').agg({
-                        'Days_to_Testing': 'mean',
-                        'Days_to_Completion': 'mean',
+                        'Days_to_DE_Completion': 'mean',
+                        'Days to Completion': lambda x: x.dropna().mean() if len(x.dropna()) > 0 else 0,
                         'Defect ID': 'count'
                     }).reset_index()
                     
-                    engineer_metrics.columns = ['Design Engineer', 'Avg Days to Testing', 'Avg Days to Completion', 'Projects Completed']
+                    engineer_metrics.columns = ['Design Engineer', 'Avg Days to DE Completion', 'Avg Days to Project Completion', 'Projects Completed']
                     
-                    # Calculate SLA compliance rate per engineer
+                    # Calculate SLA compliance rate per engineer (21 days to DE Completion)
                     sla_compliance = perf_3yr.groupby('Design Engineer').apply(
-                        lambda x: (len(x[x['Days_to_Testing'] <= 21]) / len(x) * 100) if len(x) > 0 else 0
+                        lambda x: (len(x[x['Days_to_DE_Completion'] <= 21]) / len(x) * 100) if len(x) > 0 else 0
                     ).reset_index(name='SLA Compliance %')
                     
                     # Merge metrics
@@ -984,27 +1005,32 @@ def main():
                         fig_eng_vol = px.scatter(
                             engineer_metrics,
                             x='Projects Completed',
-                            y='Avg Days to Testing',
+                            y='Avg Days to DE Completion',
                             size='SLA Compliance %',
                             color='SLA Compliance %',
                             hover_data=['Design Engineer'],
-                            title="Volume vs Performance (3-Year)",
+                            title="Volume vs DE Performance (3-Year)",
                             color_continuous_scale='RdYlGn',
                             range_color=[0, 100]
                         )
-                        fig_eng_vol.add_hline(y=21, line_dash="dash", line_color="red", annotation_text="SLA Limit")
-                        fig_eng_vol.update_layout(height=400)
+                        fig_eng_vol.add_hline(y=21, line_dash="dash", line_color="red", annotation_text="21-Day SLA")
+                        fig_eng_vol.update_layout(
+                            height=400,
+                            yaxis_title="Avg Days to DE Completion",
+                            xaxis_title="Projects Completed"
+                        )
                         st.plotly_chart(fig_eng_vol, use_container_width=True)
                     
                     # Detailed table
                     st.markdown("#### Detailed Engineer Metrics (3-Year Rolling)")
+                    st.caption("Excludes Enterprise service area and No Resource assignments")
                     st.dataframe(
                         engineer_metrics.round(1),
                         use_container_width=True,
                         hide_index=True,
                         column_config={
-                            "Avg Days to Testing": st.column_config.NumberColumn(format="%.1f days"),
-                            "Avg Days to Completion": st.column_config.NumberColumn(format="%.1f days"),
+                            "Avg Days to DE Completion": st.column_config.NumberColumn(format="%.1f days"),
+                            "Avg Days to Project Completion": st.column_config.NumberColumn(format="%.1f days"),
                             "SLA Compliance %": st.column_config.ProgressColumn(
                                 min_value=0,
                                 max_value=100,
@@ -1014,9 +1040,9 @@ def main():
                         }
                     )
                 else:
-                    st.info("No performance data available for the last 3 years")
+                    st.info("No valid performance data available (excluding placeholder dates)")
             else:
-                st.info("No performance data available")
+                st.info("No completed projects in the last 3 years (excluding Enterprise and No Resource)")
         # END MODULAR SECTION: Engineer Performance Over Time
     
     # Footer
