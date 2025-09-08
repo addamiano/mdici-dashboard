@@ -103,7 +103,7 @@ def export_all_data():
         SELECT [Design Engineer], [Defect ID], [Priority], [Service Area],
         Facility, [Project State], [Service Line], [Kick-Off Date],
         OPW, [Number of Devices], [Facility Updates], [ASA Assigned], Comments,
-        [Testing Info Sent], [DE Completion Date], [Actual Go-Live Date]
+        [Testing Info Sent], [DE Completion Date], [Actual Go-Live Date], [CE Division]
         FROM MDICI.dbo.defects
         ORDER BY 
             CASE 

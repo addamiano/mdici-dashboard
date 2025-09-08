@@ -920,41 +920,79 @@ def main():
                 st.info("No active project state data available")
         
         with chart_col2:
-            st.markdown("#### Projects by CE Division")
-            # Filter for non-complete, non-cancelled projects
-            ce_df = df.copy()
-            # Map states: Firewall->Design, Security->Complete
-            ce_df['Project State'] = ce_df['Project State'].replace({
-                'Firewall': 'Design',
-                'Security': 'Complete'
-            })
-            # Exclude Complete and Cancelled
-            ce_active = ce_df[
-                (~ce_df['Project State'].isin(['Complete', 'Cancelled'])) &
-                (ce_df['CE Division'].notna())
-            ]
-            
-            if not ce_active.empty:
-                ce_counts = ce_active['CE Division'].value_counts().sort_index()
+            # Check if CE Division column exists in the data
+            if 'CE Division' in df.columns:
+                st.markdown("#### Projects by CE Division")
+                # Filter for non-complete, non-cancelled projects
+                ce_df = df.copy()
+                # Map states: Firewall->Design, Security->Complete
+                ce_df['Project State'] = ce_df['Project State'].replace({
+                    'Firewall': 'Design',
+                    'Security': 'Complete'
+                })
+                # Exclude Complete and Cancelled
+                ce_active = ce_df[
+                    (~ce_df['Project State'].isin(['Complete', 'Cancelled'])) &
+                    (ce_df['CE Division'].notna())
+                ]
                 
-                # Create bar chart
-                fig_ce = px.bar(
-                    x=ce_counts.index,
-                    y=ce_counts.values,
-                    title=f"Active Projects by CE Division ({len(ce_active)} total)",
-                    labels={'x': 'CE Division', 'y': 'Number of Projects'},
-                    color_discrete_sequence=['#6c5ea4'],  # Match the purple color
-                    text=ce_counts.values
-                )
-                fig_ce.update_traces(texttemplate='%{text}', textposition='outside')
-                fig_ce.update_layout(
-                    height=400,
-                    xaxis_tickangle=-45,
-                    showlegend=False
-                )
-                st.plotly_chart(fig_ce, use_container_width=True)
+                if not ce_active.empty:
+                    ce_counts = ce_active['CE Division'].value_counts().sort_index()
+                    
+                    # Create bar chart
+                    fig_ce = px.bar(
+                        x=ce_counts.index,
+                        y=ce_counts.values,
+                        title=f"Active Projects by CE Division ({len(ce_active)} total)",
+                        labels={'x': 'CE Division', 'y': 'Number of Projects'},
+                        color_discrete_sequence=['#6c5ea4'],  # Match the purple color
+                        text=ce_counts.values
+                    )
+                    fig_ce.update_traces(texttemplate='%{text}', textposition='outside')
+                    fig_ce.update_layout(
+                        height=400,
+                        xaxis_tickangle=-45,
+                        showlegend=False
+                    )
+                    st.plotly_chart(fig_ce, use_container_width=True)
+                else:
+                    st.info("No CE Division data available")
             else:
-                st.info("No CE Division data available")
+                # Fallback: Show projects by Priority or another available column
+                st.markdown("#### Projects by Priority")
+                priority_df = df.copy()
+                # Map states: Firewall->Design, Security->Complete
+                priority_df['Project State'] = priority_df['Project State'].replace({
+                    'Firewall': 'Design',
+                    'Security': 'Complete'
+                })
+                # Exclude Complete and Cancelled
+                priority_active = priority_df[
+                    (~priority_df['Project State'].isin(['Complete', 'Cancelled'])) &
+                    (priority_df['Priority'].notna())
+                ]
+                
+                if not priority_active.empty:
+                    priority_counts = priority_active['Priority'].value_counts().sort_index()
+                    
+                    # Create bar chart
+                    fig_priority = px.bar(
+                        x=priority_counts.index,
+                        y=priority_counts.values,
+                        title=f"Active Projects by Priority ({len(priority_active)} total)",
+                        labels={'x': 'Priority', 'y': 'Number of Projects'},
+                        color_discrete_sequence=['#6c5ea4'],  # Match the purple color
+                        text=priority_counts.values
+                    )
+                    fig_priority.update_traces(texttemplate='%{text}', textposition='outside')
+                    fig_priority.update_layout(
+                        height=400,
+                        xaxis_tickangle=-45,
+                        showlegend=False
+                    )
+                    st.plotly_chart(fig_priority, use_container_width=True)
+                else:
+                    st.info("No priority data available")
         
         # SLA Compliance Trending
         st.markdown("### 📊 SLA Compliance Trends")
