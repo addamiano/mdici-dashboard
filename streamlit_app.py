@@ -967,6 +967,8 @@ def main():
                 (df_analysis['Design Engineer'] != 'Anthony Damiano') &
                 (df_analysis['Design Engineer'] != 'Wael Nekho') &
                 (df_analysis['Design Engineer'] != 'Nancy Kupihea') &
+                (df_analysis['Design Engineer'] != 'Andrew Le Blanc') &
+                (df_analysis['Design Engineer'] != 'Roque Gonzalez') &
                 (df_analysis['Design Engineer'] != 'Chris Coleman') &
                 (df_analysis['Design Engineer'] != 'Rob Anderson') &
                 (df_analysis['Design Engineer'].notna())
@@ -1082,3 +1084,4 @@ def main():
 if __name__ == "__main__":
 
     main()
+
