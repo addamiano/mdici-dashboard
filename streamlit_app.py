@@ -39,8 +39,7 @@ st.markdown("""
 # No custom theme - using Streamlit defaults for best compatibility
 
 # Data loading functions for CSV-based deployment
-# Temporarily disable caching to see immediate changes
-# @st.cache_data(ttl=30)
+@st.cache_data(ttl=300)  # Cache for 5 minutes
 def load_project_data():
     """Load project data from CSV file"""
     try:
@@ -74,7 +73,7 @@ def load_project_data():
         st.error(f"Error loading data: {str(e)}")
         return pd.DataFrame()
 
-# @st.cache_data(ttl=60)
+@st.cache_data(ttl=300)  # Cache for 5 minutes
 def load_completed_performance():
     """Load performance metrics from CSV"""
     try:
@@ -828,7 +827,7 @@ def main():
                 st.markdown(f"```\n{project['Comments']}\n```")
     
     with tab4:
-        st.subheader("📈 Executive Summary - Updated Layout v2.0")
+        st.subheader("📈 Executive Summary")
         
         # Get active projects data
         active_df = df[
@@ -990,7 +989,7 @@ def main():
             st.plotly_chart(fig_sla, use_container_width=True)
         
         # Top Bottlenecks (active_df already excludes Enterprise)
-        st.markdown("### ⚠️ Current Bottlenecks")
+        st.markdown("### 📊 Project Metrics")
         #st.caption("Excludes Enterprise placeholder projects")
         bottleneck_col1, bottleneck_col2, bottleneck_col3 = st.columns(3)
         
@@ -1011,11 +1010,14 @@ def main():
                 st.metric("🧪 In Testing", len(testing_df))
         
         with bottleneck_col3:
-            # Intake without kickoff
-            intake_df = active_df[(active_df['Project State'] == 'Intake') & 
-                                 (active_df['Kick-Off Date'] == '1900-01-01')]
-            st.metric("📥 Awaiting Kickoff", len(intake_df),
-                     help="Intake projects without kickoff date")
+            # Intake projects with placeholder kickoff dates
+            # Using df instead of active_df to include all intake projects, not just active ones
+            intake_awaiting = df[
+                (df['Project State'] == 'Intake') & 
+                (df['Kick-Off Date'].dt.date == pd.Timestamp('1900-01-01').date())
+            ]
+            st.metric("📥 Awaiting Kickoff", len(intake_awaiting),
+                     help="Intake projects with placeholder kickoff dates (1900-01-01)")
         
         # MODULAR SECTION: Engineer Performance Over Time (3-year rolling)
         # This section can be easily removed by deleting/commenting from here to END MODULAR SECTION
