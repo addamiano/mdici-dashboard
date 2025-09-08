@@ -41,7 +41,7 @@ conn.close()
 project_counts = data.set_index('CE Division')['project_count']
 
 # Generate the bar chart
-plt.figure(figsize=(10, 5), dpi=300)
+plt.figure(figsize=(10, 8), dpi=100, facecolor='white')
 bars = plt.bar(project_counts.index, project_counts.values, color='#6c5ea4')
 
 # Add the count above each bar
@@ -54,6 +54,6 @@ plt.title('Total In-Flight Projects by CE Division')
 plt.xticks(rotation=45)
 plt.tight_layout()
 
-# Save the final plot without the x-axis label and with a transparent background
+# Save the final plot without the x-axis label and with a white background
 output_graph_path = '04_page_4_of_FY_Data.png'
-plt.savefig(output_graph_path, transparent=True, bbox_inches='tight')
+plt.savefig(output_graph_path, facecolor='white', bbox_inches='tight', dpi=100)

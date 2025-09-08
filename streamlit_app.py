@@ -881,7 +881,7 @@ def main():
             # Display Project State Distribution chart if it exists
             if os.path.exists('02_page_2_of_FY_Data.png'):
                 st.markdown("#### Project State Distribution")
-                st.image('02_page_2_of_FY_Data.png', use_column_width=True)
+                st.image('02_page_2_of_FY_Data.png', use_container_width=True)
             else:
                 st.info("Project State Distribution chart not available. Run 02_SQL_current_active_projects.py to generate.")
         
@@ -889,7 +889,7 @@ def main():
             # Display CE Division chart if it exists
             if os.path.exists('04_page_4_of_FY_Data.png'):
                 st.markdown("#### Projects by CE Division")
-                st.image('04_page_4_of_FY_Data.png', use_column_width=True)
+                st.image('04_page_4_of_FY_Data.png', use_container_width=True)
             else:
                 st.info("CE Division chart not available. Run 04_SQL_current_active_by_ce_division.py to generate.")
         

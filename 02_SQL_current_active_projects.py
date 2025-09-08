@@ -45,7 +45,7 @@ data = data[data['Project State'] != 'Complete']
 filtered_project_state_counts = data['Project State'].value_counts()
 
 # Plot the pie chart
-plt.figure(figsize=(35, 25), dpi=300)
+plt.figure(figsize=(10, 8), dpi=100)
 
 # Update colors to include only the relevant project states
 colors = {
@@ -61,26 +61,26 @@ default_color = '#d3d3d3'
 # Assign the colors for the project states, using default_color for unknown states
 state_colors = [colors.get(state, default_color) for state in filtered_project_state_counts.index]
 
-fig, ax = plt.subplots(figsize=(35, 25), dpi=300)
+fig, ax = plt.subplots(figsize=(10, 8), dpi=100, facecolor='white')
 wedges, texts, autotexts = ax.pie(filtered_project_state_counts, 
                                   labels=filtered_project_state_counts.index,
                                   autopct=lambda p: '{:.0f}'.format(p * sum(filtered_project_state_counts) / 100),
                                   startangle=90, colors=state_colors,
-                                  textprops={'fontsize': 34})
+                                  textprops={'fontsize': 12})
 
-plt.setp(autotexts, size=34, weight="bold")
+plt.setp(autotexts, size=14, weight="bold")
 
 legend = ax.legend(wedges, filtered_project_state_counts.index,
                    title="Project States",
                    loc="lower right",
                    bbox_to_anchor=(1, 0),
-                   fontsize=34,
+                   fontsize=12,
                    labelspacing=1.2)
 
-plt.setp(legend.get_title(), fontsize=34)
+plt.setp(legend.get_title(), fontsize=14)
 
 plt.tight_layout()
 plt.subplots_adjust(right=0.85, bottom=0.1)
 
 # Save the pie chart
-plt.savefig('02_page_2_of_FY_Data.png', bbox_inches='tight', transparent=True, dpi=300, format='png')
+plt.savefig('02_page_2_of_FY_Data.png', bbox_inches='tight', facecolor='white', dpi=100, format='png')
