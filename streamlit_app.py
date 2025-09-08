@@ -901,7 +901,7 @@ def main():
         
         # Top Bottlenecks (active_df already excludes Enterprise)
         st.markdown("### ⚠️ Current Bottlenecks")
-        st.caption("Excludes Enterprise placeholder projects")
+        #st.caption("Excludes Enterprise placeholder projects")
         bottleneck_col1, bottleneck_col2, bottleneck_col3 = st.columns(3)
         
         with bottleneck_col1:
@@ -1084,5 +1084,6 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
