@@ -431,12 +431,22 @@ def main():
         # Project State filter
         project_states = sorted(df['Project State'].unique())
         if 'selected_states' not in st.session_state:
-            st.session_state.selected_states = ['Design', 'Firewall']
+            # Set default states, but only include those that exist in the data
+            default_states = ['Design', 'Firewall']
+            st.session_state.selected_states = [state for state in default_states if state in project_states]
+            # If no default states exist in data, use the first available state
+            if not st.session_state.selected_states and project_states:
+                st.session_state.selected_states = [project_states[0]]
+        
+        # Validate session state against current data
+        valid_states = [state for state in st.session_state.selected_states if state in project_states]
+        if not valid_states and project_states:
+            valid_states = [project_states[0]]
         
         selected_states = st.multiselect(
             "Project States:",
             options=project_states,
-            default=st.session_state.selected_states
+            default=valid_states
         )
         if selected_states:
             st.session_state.selected_states = selected_states
