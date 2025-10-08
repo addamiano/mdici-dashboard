@@ -1082,9 +1082,13 @@ def main():
                 actual_completion_col = 'Testing Info Sent'
                 st.caption("Using Testing Info Sent as proxy for DE completion - Excludes Enterprise and No Resource")
             
-            # Filter: Last 3 years, completed projects, exclude Enterprise and No Resource
+            # Filter: Last 3 years based on when Testing Info was sent (DE work complete)
+            # This captures Complete, Security, and Testing projects where DE finished work in last 3 years
+            df_analysis['Testing Info Sent'] = pd.to_datetime(df_analysis['Testing Info Sent'], errors='coerce')
+
             perf_3yr = df_analysis[
-                (df_analysis['Actual Go-Live Date'] >= three_years_ago) &
+                (df_analysis['Testing Info Sent'] >= three_years_ago) &
+                (df_analysis['Testing Info Sent'].notna()) &
                 (df_analysis['Project State'].isin(['Complete', 'Security', 'Testing'])) &
                 (df_analysis['Service Area'] != 'Enterprise') &
                 (df_analysis['Design Engineer'] != 'No Resource') &
@@ -1233,6 +1237,3 @@ def main():
 if __name__ == "__main__":
 
     main()
-
-
-
