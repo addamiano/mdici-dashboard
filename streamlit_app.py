@@ -1085,7 +1085,7 @@ def main():
             # Filter: Last 3 years, completed projects, exclude Enterprise and No Resource
             perf_3yr = df_analysis[
                 (df_analysis['Actual Go-Live Date'] >= three_years_ago) &
-                (df_analysis['Project State'].isin(['Complete', 'Security'])) &
+                (df_analysis['Project State'].isin(['Complete', 'Security', 'Testing'])) &
                 (df_analysis['Service Area'] != 'Enterprise') &
                 (df_analysis['Design Engineer'] != 'No Resource') &
                 (df_analysis['Design Engineer'] != 'Not Applicable') &
