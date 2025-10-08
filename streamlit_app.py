@@ -348,10 +348,12 @@ def main():
             st.metric("Testing Info → Completion", f"{avg_testing_to_completion_6m:.1f} days",
                      help="Average days from when testing info is sent until project goes live (site testing & implementation phase)")
         with col4:
-            sla_met_6m = len(perf_6m[perf_6m['Days_to_Testing'] <= 21]) if len(perf_6m) > 0 else 0
-            sla_rate_6m = (sla_met_6m / len(perf_6m) * 100) if len(perf_6m) > 0 else 0
-            st.metric("SLA Met Rate (≤21 days)", f"{sla_rate_6m:.1f}%",
-                     help="Percentage of projects that met the 21-day SLA from kickoff to testing info sent")
+            # Calculate SLA based on DE Completion (not Testing Info)
+            valid_de_6m = perf_6m[perf_6m['Days_to_DE_Completion'].notna()]
+            sla_met_6m = len(valid_de_6m[valid_de_6m['Days_to_DE_Completion'] <= 21]) if len(valid_de_6m) > 0 else 0
+            sla_rate_6m = (sla_met_6m / len(valid_de_6m) * 100) if len(valid_de_6m) > 0 else 0
+            st.metric("DE SLA Met (≤21 days)", f"{sla_rate_6m:.1f}%",
+                     help="Percentage of projects where Design Engineers completed their work within the 21-day SLA (Kickoff → DE Completion Date)")
         
         # 12 month metrics  
         st.markdown("**Last 12 Months:**")
@@ -371,10 +373,12 @@ def main():
             st.metric("Testing Info → Completion", f"{avg_testing_to_completion_12m:.1f} days",
                      help="Average days from when testing info is sent until project goes live (site testing & implementation phase)")
         with col4:
-            sla_met_12m = len(perf_12m[perf_12m['Days_to_Testing'] <= 21]) if len(perf_12m) > 0 else 0
-            sla_rate_12m = (sla_met_12m / len(perf_12m) * 100) if len(perf_12m) > 0 else 0
-            st.metric("SLA Met Rate (≤21 days)", f"{sla_rate_12m:.1f}%",
-                     help="Percentage of projects that met the 21-day SLA from kickoff to testing info sent")
+            # Calculate SLA based on DE Completion (not Testing Info)
+            valid_de_12m = perf_12m[perf_12m['Days_to_DE_Completion'].notna()]
+            sla_met_12m = len(valid_de_12m[valid_de_12m['Days_to_DE_Completion'] <= 21]) if len(valid_de_12m) > 0 else 0
+            sla_rate_12m = (sla_met_12m / len(valid_de_12m) * 100) if len(valid_de_12m) > 0 else 0
+            st.metric("DE SLA Met (≤21 days)", f"{sla_rate_12m:.1f}%",
+                     help="Percentage of projects where Design Engineers completed their work within the 21-day SLA (Kickoff → DE Completion Date)")
     
     # Search & Filter section - moved above data grid for better UX
     st.markdown("---")
