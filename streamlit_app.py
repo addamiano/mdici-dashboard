@@ -83,33 +83,42 @@ def load_project_data():
         return pd.DataFrame()
 
 @st.cache_data(ttl=300)  # Cache for 5 minutes
-def load_completed_performance():
-    """Load performance metrics from CSV"""
+def calculate_performance_metrics(df):
+    """Calculate performance metrics from the main projects dataframe"""
     try:
-        # Try to load performance data
-        possible_files = [
-            'mdici_performance_latest.csv',
-            'exported_data/mdici_performance_latest.csv',
-        ]
-        
-        for file_path in possible_files:
-            try:
-                df = pd.read_csv(file_path)
-                
-                # Convert date columns
-                date_columns = ['Kick-Off Date', 'Testing Info Sent', 'Actual Go-Live Date', 'Export Date']
-                for col in date_columns:
-                    if col in df.columns:
-                        df[col] = pd.to_datetime(df[col], errors='coerce')
-                
-                return df
-            except:
-                continue
-                
-        return pd.DataFrame()  # Return empty if no file found
-    
+        # Filter for completed projects with necessary dates
+        completed_df = df[
+            (df['Project State'].isin(['Complete', 'Security'])) &
+            (df['Kick-Off Date'].notna()) &
+            (df['Kick-Off Date'] != '1900-01-01') &
+            (df['Actual Go-Live Date'].notna())
+        ].copy()
+
+        if completed_df.empty:
+            return pd.DataFrame()
+
+        # Convert date columns to datetime
+        date_columns = ['Kick-Off Date', 'Testing Info Sent', 'DE Completion Date', 'Actual Go-Live Date']
+        for col in date_columns:
+            if col in completed_df.columns:
+                completed_df[col] = pd.to_datetime(completed_df[col], errors='coerce')
+
+        # Calculate performance metrics
+        completed_df['Days_to_Testing'] = (completed_df['Testing Info Sent'] - completed_df['Kick-Off Date']).dt.days
+        completed_df['Days_to_DE_Completion'] = (completed_df['DE Completion Date'] - completed_df['Kick-Off Date']).dt.days
+        completed_df['Days_to_Completion'] = (completed_df['Actual Go-Live Date'] - completed_df['Kick-Off Date']).dt.days
+
+        # Return only the columns needed for performance metrics
+        result_columns = ['Design Engineer', 'Defect ID', 'Kick-Off Date', 'Testing Info Sent',
+                         'DE Completion Date', 'Actual Go-Live Date', 'Days_to_Testing',
+                         'Days_to_DE_Completion', 'Days_to_Completion']
+
+        # Only include columns that exist
+        available_columns = [col for col in result_columns if col in completed_df.columns]
+        return completed_df[available_columns]
+
     except Exception as e:
-        st.warning(f"Could not load performance metrics: {str(e)}")
+        st.warning(f"Could not calculate performance metrics: {str(e)}")
         return pd.DataFrame()
 
 def create_status_pie_chart(df):
@@ -279,7 +288,8 @@ def main():
     # Load data with progress indicator
     with st.spinner("Loading exported project data..."):
         df = load_project_data()
-        performance_df = load_completed_performance()
+        # Calculate performance metrics from the main projects dataframe
+        performance_df = calculate_performance_metrics(df)
     
     if df.empty:
         st.error("No data available. Please check your CSV files.")
