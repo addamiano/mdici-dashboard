@@ -1093,7 +1093,6 @@ def main():
                 (df_analysis['Service Area'] != 'Enterprise') &
                 (df_analysis['Design Engineer'] != 'No Resource') &
                 (df_analysis['Design Engineer'] != 'Not Applicable') &
-                (df_analysis['Design Engineer'] != 'Anthony Damiano') &
                 (df_analysis['Design Engineer'] != 'Wael Nekho') &
                 (df_analysis['Design Engineer'] != 'Nancy Kupihea') &
                 (df_analysis['Design Engineer'] != 'Andrew Le Blanc') &
